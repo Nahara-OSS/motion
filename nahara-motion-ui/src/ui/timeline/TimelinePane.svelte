@@ -51,7 +51,7 @@
         const deltaY = e.shiftKey ? e.deltaX : e.deltaY;
 
         if (e.ctrlKey) {
-            zoom = Math.max(Math.min(zoom + deltaY, 1000), 1);
+            zoom = Math.max(Math.min(zoom - deltaY, 1000), 1);
             e.preventDefault();
         } else {
             scroll = Math.max(scroll + deltaX * 1000 / zoom, 0);
