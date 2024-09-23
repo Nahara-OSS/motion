@@ -15,7 +15,7 @@
             type: "split",
             direction: SplitDirection.BottomToTop,
             firstSize: 500,
-            first: { type: "tab", tabs: ["project"], selected: "project" },
+            first: { type: "tab", tabs: ["files", "project"], selected: "files" },
             second: { type: "tab", tabs: ["outliner"], selected: "outliner" }
         },
         second: {
@@ -27,7 +27,7 @@
                 type: "split",
                 direction: SplitDirection.RightToLeft,
                 firstSize: 300,
-                first: { type: "tab", tabs: ["properties"], selected: "properties" },
+                first: { type: "tab", tabs: ["properties", "modifiers"], selected: "properties" },
                 second: { type: "tab", tabs: ["viewport"], selected: "viewport" }
             }
         }
