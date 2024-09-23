@@ -106,6 +106,7 @@
                     icon: s[2],
                     click() {
                         prop.modify(keyframe, { easing: s[0] });
+                        dispatcher("update", object);
                     },
                 }))
             },
@@ -207,7 +208,7 @@
                     <div class="timeline">
                         {#each prop as keyframe}
                             <div
-                                class="keyframe"
+                                class="keyframe {typeof keyframe.easing == 'string' ? keyframe.easing : 'custom'}"
                                 role="button"
                                 tabindex="0"
                                 style:left="{(keyframe.time - scroll) * zoom / 1000}px"
@@ -260,6 +261,33 @@
                 cursor: pointer;
 
                 &:hover { border: 2px solid #1d1d1d; }
+
+                &.hold {
+                    rotate: 0deg;
+                    width: 10px;
+                    height: 10px;
+                }
+
+                &.ease-in {
+                    rotate: 0deg;
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 10px 0 0 10px;
+                }
+
+                &.ease-out {
+                    rotate: 0deg;
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 0 10px 10px 0;
+                }
+
+                &.ease-in-out {
+                    rotate: 0deg;
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 10px;
+                }
             }
         }
 
