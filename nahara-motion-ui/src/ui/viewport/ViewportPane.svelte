@@ -1,8 +1,8 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { app } from "../../appglobal";
-    import { objects, type IAnimatable, type IObjectContainer, type IScene, type ISceneContainerObject, type ISceneObjectWithPositionalData, type ISceneObjectWithSizeData, type ISceneObjectWithViewportEditing, type SceneObjectInfo } from "@nahara/motion";
-    import { buildViewportSceneTree, calculateViewportButtonGeometries, findObjectFromPoint, getAbsoluteInViewport, type ViewportSceneObject, type ViewportSceneTree } from "./sceneutils";
+    import { objects, type IAnimatable, type IObjectContainer, type IScene, type ISceneContainerObject, type ISceneObjectWithPositionalData, type ISceneObjectWithRotationData, type ISceneObjectWithSizeData, type ISceneObjectWithViewportEditing, type SceneObjectInfo } from "@nahara/motion";
+    import { buildViewportSceneTree, calculateViewportButtonGeometries, calculateViewportButtons0, findObjectFromPoint, getAbsoluteInViewport, getAbsoluteInViewport0, type ViewportSceneObject, type ViewportSceneTree } from "./sceneutils";
     import { openMenuAt } from "../menu/MenuHost.svelte";
     import type { DropdownEntry } from "../menu/FancyMenu";
 
@@ -76,41 +76,49 @@
             (canvas.width - sceneWidth * sceneViewportScale) / 2,
             (canvas.height - sceneHeight * sceneViewportScale) / 2
         );
+        // renderSelectionBox(sceneViewportScale);
         renderSelectionBox(sceneViewportScale);
     }
 
     function renderSelectionBox(vpScale: number) {
         if (!($currentSelection && sceneTree)) return;
-        const geom = getAbsoluteInViewport(sceneTree.all.get($currentSelection.primary)!, $seekhead.position);
-        const rectangles = calculateViewportButtonGeometries(geom, vpScale);
-        if (!rectangles) return;
+        const objectVpGeom = getAbsoluteInViewport0(sceneTree.all.get($currentSelection.primary)!, $seekhead.position, vpScale);
 
-        for (const rect of rectangles) {
-            switch (rect.drawMode) {
-                case "filled":
-                    ctx.strokeStyle = "#000000";
-                    ctx.fillStyle = "#ffffff";
-                    ctx.strokeRect(rect.geometry.position.x, rect.geometry.position.y, rect.geometry.size.x, rect.geometry.size.y);
-                    ctx.fillRect(rect.geometry.position.x, rect.geometry.position.y, rect.geometry.size.x, rect.geometry.size.y);
-                    continue;
-                case "border":
-                    ctx.strokeStyle = "#000000";
-                    ctx.lineWidth = 4;
-                    ctx.strokeRect(rect.geometry.position.x, rect.geometry.position.y, rect.geometry.size.x, rect.geometry.size.y);
-                    ctx.strokeStyle = "#ffffff";
-                    ctx.lineWidth = 2;
-                    ctx.strokeRect(rect.geometry.position.x, rect.geometry.position.y, rect.geometry.size.x, rect.geometry.size.y);
-                    continue;
-                default:
-                    continue;
+        if (objectVpGeom) {
+            ctx.save();
+            ctx.setTransform(ctx.getTransform().multiply(objectVpGeom.transform));
+            const buttons = calculateViewportButtons0($currentSelection.primary, objectVpGeom);
+
+            for (const { geometry, drawStyle } of buttons) {
+                switch (drawStyle) {
+                    case "filled":
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = "#000000";
+                        ctx.fillStyle = "#ffffff";
+                        ctx.strokeRect(geometry.position.x, geometry.position.y, geometry.size.x, geometry.size.y);
+                        ctx.fillRect(geometry.position.x, geometry.position.y, geometry.size.x, geometry.size.y);
+                        break;
+                    case "outline":
+                        ctx.strokeStyle = "#000000";
+                        ctx.lineWidth = 4;
+                        ctx.strokeRect(geometry.position.x, geometry.position.y, geometry.size.x, geometry.size.y);
+                        ctx.strokeStyle = "#ffffff";
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(geometry.position.x, geometry.position.y, geometry.size.x, geometry.size.y);
+                        break;
+                    default:
+                        break;
+                }
             }
+
+            ctx.restore();
         }
     }
 
     // Mouse events
     let clickingCanvas = false;
     let clickingObject: SceneObjectInfo | undefined = undefined;
-    let clickingViewportButton: (ReturnType<typeof calculateViewportButtonGeometries> & {})[number] | undefined = undefined;
+    let clickingViewportButton0: (ReturnType<typeof calculateViewportButtons0>)[number] | undefined = undefined;
     let adjustedClickingObject = false;
 
     function mapMousePositionFromEvent(e: MouseEvent, scene: IScene) {
@@ -132,14 +140,13 @@
     function handleCanvasMouseDown(e: MouseEvent) {
         clickingCanvas = true;
         clickingObject = undefined;
-        clickingViewportButton = undefined;
         adjustedClickingObject = false;
 
         if (!$currentScene) return;
         const { sx, sy, vpScale } = mapMousePositionFromEvent(e, $currentScene);
 
         if ($currentSelection) {
-            const primaryGeom = getAbsoluteInViewport(sceneTree!.all.get($currentSelection.primary)!, $seekhead.position);
+            /*const primaryGeom = getAbsoluteInViewport(sceneTree!.all.get($currentSelection.primary)!, $seekhead.position);
             const buttons = calculateViewportButtonGeometries(primaryGeom, vpScale)?.filter(b => !!b.inputMatrix).reverse();
 
             if (buttons) for (const button of buttons) {
@@ -152,6 +159,23 @@
                     clickingObject = $currentSelection.primary;
                     clickingViewportButton = button;
                     return;
+                }
+            }*/
+
+            const objectVpGeom = getAbsoluteInViewport0(sceneTree!.all.get($currentSelection.primary)!, $seekhead.position, vpScale);
+
+            if (objectVpGeom) {
+                const { transform } = objectVpGeom;
+                const click = transform.inverse().transformPoint({ x: sx * vpScale, y: sy * vpScale });
+
+                for (const button of calculateViewportButtons0($currentSelection.primary, objectVpGeom)) {
+                    const { position, size } = button.geometry;
+                    
+                    if (click.x >= position.x && click.y >= position.y && click.x < position.x + size.x && click.y < position.y + size.y) {
+                        clickingObject = $currentSelection.primary;
+                        clickingViewportButton0 = button;
+                        return;
+                    }
                 }
             }
 
@@ -173,28 +197,80 @@
         if (!clickingCanvas) return;
 
         if (!$currentScene) return;
-        const { sdx, sdy } = mapMousePositionFromEvent(e, $currentScene);
+        const { sx, sy, sdx, sdy, vpScale } = mapMousePositionFromEvent(e, $currentScene);
 
-        if (clickingObject && clickingViewportButton) {
-            function applyInput<T>(animatable: IAnimatable<T>, adjustment: (prev: T, x: number, y: number) => T) {
-                const current = animatable.get($seekhead.position);
-                const next = adjustment(current, sdx, sdy);
-                if (animatable.animated) animatable.set($seekhead.position, next);
-                else animatable.defaultValue = next;
-            }
+        if (clickingObject && clickingViewportButton0) {
+            const inputMatrix = clickingViewportButton0.input;
+            const objectVpGeom = getAbsoluteInViewport0(sceneTree!.all.get(clickingObject)!, $seekhead.position, vpScale);
 
-            const inputMatrix = clickingViewportButton.inputMatrix!;
+            if (inputMatrix && objectVpGeom) {
+                const localPrev = objectVpGeom.transform.inverse().transformPoint({ x: sx - sdx, y: sy - sdy });
+                const localNow = objectVpGeom.transform.inverse().transformPoint({ x: sx, y: sy });
+                const tInputX = localNow.x - localPrev.x;
+                const tInputY = localNow.y - localPrev.y;
 
-            if ((clickingObject.object as ISceneObjectWithPositionalData).isPositional) {
-                const { x, y } = clickingObject.object as ISceneObjectWithPositionalData;
-                applyInput(x, (prev, dx, dy) => prev + dx * inputMatrix.position.x);
-                applyInput(y, (prev, dx, dy) => prev + dy * inputMatrix.position.y);
-            }
-            
-            if ((clickingObject.object as ISceneObjectWithSizeData).isSizable) {
-                const { width, height } = clickingObject.object as ISceneObjectWithSizeData;
-                applyInput(width, (prev, dx, dy) => prev + dx * inputMatrix.size.x);
-                applyInput(height, (prev, dx, dy) => prev + dy * inputMatrix.size.y);
+                function applyInput<T>(animatable: IAnimatable<T>, adjustment: (prev: T, x: number, y: number) => T, dx: number, dy: number) {
+                    const current = animatable.get($seekhead.position);
+                    const next = adjustment(current, dx, dy);
+                    if (animatable.animated) animatable.set($seekhead.position, next);
+                    else animatable.defaultValue = next;
+                }
+
+                let currentSizeWidth = 0;
+                let currentSizeHeight = 0;
+
+                // Resize: Keep corner
+                if ((clickingObject.object as ISceneObjectWithSizeData).isSizable) {
+                    const { width, height } = clickingObject.object as ISceneObjectWithSizeData;
+
+                    if (inputMatrix?.size) {
+                        applyInput(width, (prev, dx, dy) => prev + dx * inputMatrix!.size!.x, tInputX, tInputY);
+                        applyInput(height, (prev, dx, dy) => prev + dy * inputMatrix!.size!.y, tInputX, tInputY);
+
+                        // Take into account for shifting while changing size
+                        // Keep the corner to old corner
+                        // The rotation transform chain:
+                        // 1. Translate by object's world pos
+                        // 2. Translate by half the object's size
+                        // 3. Rotate
+                        // 4. Traslate by negative of half the object's size
+                        // 5. We are at object's real top-left corner!
+    
+                        if ((clickingObject.object as ISceneObjectWithPositionalData).isPositional) {
+                            const { x, y } = clickingObject.object as ISceneObjectWithPositionalData;
+                            const newGeom = getAbsoluteInViewport0(sceneTree!.all.get(clickingObject)!, $seekhead.position, vpScale);
+                            const oldRealCorner = objectVpGeom.transform.transformPoint({ x: 0, y: 0 });
+                            const newRealCorner = newGeom!.transform.transformPoint({ x: 0, y: 0 });
+                            const dx = newRealCorner.x - oldRealCorner.x;
+                            const dy = newRealCorner.y - oldRealCorner.y;
+                            applyInput(x, (prev, dx, dy) => prev - dx / vpScale, dx, dy);
+                            applyInput(y, (prev, dx, dy) => prev - dy / vpScale, dx, dy);
+                        }
+                    }
+
+                    currentSizeWidth = width.get($seekhead.position);
+                    currentSizeHeight = height.get($seekhead.position);
+                }
+
+                // Moving
+                if ((clickingObject.object as ISceneObjectWithPositionalData).isPositional && inputMatrix?.position) {
+                    const { x, y } = clickingObject.object as ISceneObjectWithPositionalData;
+                    applyInput(x, (prev, dx, dy) => prev + dx * inputMatrix!.position!.x, sdx, sdy);
+                    applyInput(y, (prev, dx, dy) => prev + dy * inputMatrix!.position!.y, sdx, sdy);
+                }
+
+                // Rotating around its center
+                if ((clickingObject.object as ISceneObjectWithRotationData).isRotatable && inputMatrix?.rotation) {
+                    const { rotation } = clickingObject.object as ISceneObjectWithRotationData;
+                    const center = objectVpGeom.transform.transformPoint({
+                        x: currentSizeWidth * vpScale / 2,
+                        y: currentSizeHeight * vpScale / 2
+                    });
+                    const nx = sx - center.x / vpScale;
+                    const ny = sy - center.y / vpScale;
+                    const angle = Math.atan2(ny, nx) * 180 / Math.PI + 90;
+                    applyInput(rotation, (_, dx) => dx, angle, 0);
+                }
             }
 
             adjustedClickingObject = true;
@@ -212,12 +288,8 @@
         // Just click
         if (clickingObject && !adjustedClickingObject) {
             const subtree = sceneTree!.all.get(clickingObject)?.children ?? sceneTree!.root;
-            const offset = subtree == sceneTree!.root
-                ? { x: 0, y: 0 }
-                : getAbsoluteInViewport(sceneTree!.all.get(clickingObject)!, $seekhead.position)?.position
-                ?? { x: 0, y: 0 };
             const clicked = findObjectFromPoint(
-                sx - offset.x, sy - offset.y,
+                sx, sy,
                 $seekhead.position,
                 subtree
             );

@@ -1,24 +1,27 @@
 import { RenderContext } from "../../render/context.js";
 import { IAnimatable, Animatable } from "../../scene/animation.js";
-import { ISceneObjectWithPositionalData, ISceneObjectWithSizeData, ISceneContainerObject, SceneObjectInfo, ISceneObjectType, objects } from "../../scene/object.js";
+import { ISceneObjectWithPositionalData, ISceneObjectWithSizeData, ISceneContainerObject, SceneObjectInfo, ISceneObjectType, objects, ISceneObjectWithRotationData } from "../../scene/object.js";
 
-export class Container implements ISceneObjectWithPositionalData, ISceneObjectWithSizeData, ISceneContainerObject {
+export class Container implements ISceneObjectWithPositionalData, ISceneObjectWithSizeData, ISceneObjectWithRotationData, ISceneContainerObject {
     isContainer: true = true;
     isPositional: true = true;
     isSizable: true = true;
+    isRotatable: true = true;
     isViewportEditable: true = true;
 
     x: IAnimatable<number> = Animatable.scalar("x");
     y: IAnimatable<number> = Animatable.scalar("y");
     width: IAnimatable<number> = Animatable.scalar("width", 100);
     height: IAnimatable<number> = Animatable.scalar("height", 100);
+    rotation: IAnimatable<number> = Animatable.scalar("rotation");
     children: SceneObjectInfo[] = [];
 
     properties = [
         this.x,
         this.y,
         this.width,
-        this.height
+        this.height,
+        this.rotation
     ];
 
     render(context: RenderContext): void {
@@ -26,6 +29,7 @@ export class Container implements ISceneObjectWithPositionalData, ISceneObjectWi
         const y = this.y.get(context.time);
         const width = this.width.get(context.time);
         const height = this.height.get(context.time);
+        const rotation = this.rotation.get(context.time);
 
         let newContext: RenderContext = {
             canvas: context.canvas,
@@ -34,10 +38,16 @@ export class Container implements ISceneObjectWithPositionalData, ISceneObjectWi
             timeDelta: context.timeDelta
         };
 
-        context.canvas.translate(x, y);
+        context.canvas.translate(x + width / 2, y + height / 2);
+        context.canvas.rotate(rotation * Math.PI / 180);
+        context.canvas.translate(-(width / 2), -(height / 2));
+
         let objs = this.collect(context.time);
         objs.forEach(obj => obj.object.render(newContext));
-        context.canvas.translate(-x, -y);
+
+        context.canvas.translate(width / 2, height / 2);
+        context.canvas.rotate(-(rotation * Math.PI / 180));
+        context.canvas.translate(-(x + width / 2), -(y + height / 2));
     }
 
     get objectsCount(): number { return this.children.length; }
@@ -92,6 +102,7 @@ export class Container implements ISceneObjectWithPositionalData, ISceneObjectWi
         y: any,
         width: any,
         height: any,
+        rotation: any,
         children: any[]
     }> = {
         class: Container,
@@ -104,6 +115,7 @@ export class Container implements ISceneObjectWithPositionalData, ISceneObjectWi
             out.y.fromSerializable(data.y);
             out.width.fromSerializable(data.width);
             out.height.fromSerializable(data.height);
+            out.rotation.fromSerializable(data.rotation);
             out.children = data.children.map(objects.fromSerializable).filter(v => !!v);
             return out;
         },
@@ -113,6 +125,7 @@ export class Container implements ISceneObjectWithPositionalData, ISceneObjectWi
                 y: object.y.serializable,
                 width: object.width.serializable,
                 height: object.height.serializable,
+                rotation: object.rotation.serializable,
                 children: object.children.map(objects.toSerializable)
             };
         },

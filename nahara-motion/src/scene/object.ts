@@ -65,6 +65,7 @@ export interface ISceneObjectWithViewportEditing extends ISceneObject {
     readonly isViewportEditable: true;
     readonly isPositional?: boolean;
     readonly isSizable?: boolean;
+    readonly isRotatable?: boolean;
 
     /**
      * The scale of this scene object's editable nodes in 2D preview viewport. The default scale is `(1; 1)`. The value
@@ -74,13 +75,23 @@ export interface ISceneObjectWithViewportEditing extends ISceneObject {
 }
 
 /**
- * A scene object with positional data. Any object that's implementing this interface will have position controls
+ * A scene object with positional data. Any object that's implementing this interface will have size handle controls
  * visible in the viewport, allowing user to easily edit the object's position by just grabbing it.
  */
 export interface ISceneObjectWithPositionalData extends ISceneObjectWithViewportEditing {
     readonly isPositional: true;
     readonly x: IAnimatable<number>;
     readonly y: IAnimatable<number>;
+}
+
+/**
+ * A scene object with rotation data. Any object that's implementing this interface will have rotation control visible
+ * in the viewport, allowing user to easily edit the object's rotation by just grabbing it. The rotation is always in
+ * degrees (`deg`).
+ */
+export interface ISceneObjectWithRotationData extends ISceneObjectWithViewportEditing {
+    readonly isRotatable: true;
+    readonly rotation: IAnimatable<number>;
 }
 
 /**
