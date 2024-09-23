@@ -1,7 +1,7 @@
 <script lang="ts">
     import Button from "./ui/input/Button.svelte";
-    import MediaBar from "./ui/media/MediaBar.svelte";
-    import MenuBar from "./ui/menu/MenuBar.svelte";
+    import MediaBar from "./ui/bar/MediaBar.svelte";
+    import TopBar from "./ui/bar/TopBar.svelte";
     import MenuHost from "./ui/menu/MenuHost.svelte";
     import OutlinerPane from "./ui/outliner/OutlinerPane.svelte";
     import PaneHost, { SplitDirection, type PaneLayout } from "./ui/pane/PaneHost.svelte";
@@ -38,7 +38,7 @@
 
 <div class="app">
     <div class="content">
-        <MenuBar />
+        <TopBar />
         <PaneHost {layout} component={type => {
             if (type == "properties") return PropertiesPane;
             if (type == "timeline") return TimelinePane;
