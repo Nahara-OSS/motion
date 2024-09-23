@@ -1,5 +1,7 @@
 <script lang="ts">
     import Button from "./ui/input/Button.svelte";
+    import MediaBar from "./ui/media/MediaBar.svelte";
+    import MenuBar from "./ui/menu/MenuBar.svelte";
     import MenuHost from "./ui/menu/MenuHost.svelte";
     import OutlinerPane from "./ui/outliner/OutlinerPane.svelte";
     import PaneHost, { SplitDirection, type PaneLayout } from "./ui/pane/PaneHost.svelte";
@@ -35,13 +37,17 @@
 </script>
 
 <div class="app">
-    <PaneHost {layout} component={type => {
-        if (type == "properties") return PropertiesPane;
-        if (type == "timeline") return TimelinePane;
-        if (type == "outliner") return OutlinerPane;
-        if (type == "viewport") return ViewportPane;
-        return Button;
-    }} on:layoutupdate={e => layout = e.detail} />
+    <div class="content">
+        <MenuBar />
+        <PaneHost {layout} component={type => {
+            if (type == "properties") return PropertiesPane;
+            if (type == "timeline") return TimelinePane;
+            if (type == "outliner") return OutlinerPane;
+            if (type == "viewport") return ViewportPane;
+            return Button;
+        }} on:layoutupdate={e => layout = e.detail} />
+        <MediaBar />
+    </div>
     <MenuHost />
 </div>
 
@@ -50,5 +56,11 @@
         position: relative;
         width: 100%;
         height: 100%;
+
+        .content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
     }
 </style>

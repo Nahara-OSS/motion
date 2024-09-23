@@ -78,14 +78,6 @@
 />
 
 <div class="wrapper">
-    <div class="media-controls">
-        <Button label="<<" keys={["Home"]} />
-        <Button label="<" keys={["<-"]} />
-        <Button label="Stop" />
-        <Button label="Play" keys={["Space"]} on:click={() => app.setPlaybackState(app.getPlaybackState() == "paused" ? "forward" : "paused")} />
-        <Button label=">" keys={["->"]} />
-        <Button label=">>" keys={["End"]} />
-    </div>
     <div class="time-seekbar-combo">
         <div class="time" style:width="{labelWidth}px">
             <div class="seconds">{displaySeconds}</div>
@@ -123,15 +115,6 @@
         height: 100%;
         box-sizing: border-box;
         overflow: hidden;
-    }
-
-    .media-controls {
-        display: flex;
-        justify-content: center;
-        padding: 5px;
-        height: 24px;
-        min-height: 24px;
-        > :global(*) { margin: 0 2px; }
     }
 
     .tracks {
