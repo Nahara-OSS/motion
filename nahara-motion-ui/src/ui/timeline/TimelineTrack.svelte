@@ -1,8 +1,9 @@
 <script lang="ts">
-    import type { IAnimatable, IObjectContainer, IObjectProperty, ISceneContainerObject, SceneObjectInfo } from "@nahara/motion";
+    import type { Easing, IAnimatable, IObjectContainer, IObjectProperty, ISceneContainerObject, Keyframe, SceneObjectInfo } from "@nahara/motion";
     import Button from "../input/Button.svelte";
     import { createEventDispatcher } from "svelte";
     import { snapping } from "../../snapping";
+    import { openMenuAt } from "../menu/MenuHost.svelte";
 
     // BIG AHH TODO: Weed out objects that are outside the visible timeline area
 
@@ -71,6 +72,44 @@
         draggingLifespan = false;
         draggingPulltab = "none";
     }
+
+    function handleKeyframeContextMenu<T>(e: MouseEvent, prop: IAnimatable<T>, keyframe: Keyframe<T>) {
+        e.preventDefault();
+        openMenuAt(e.clientX, e.clientY, [
+            {
+                type: "tree",
+                name: "Easing",
+                children: ([
+                    ["linear", "Linear", "easing.linear"],
+                    ["hold", "Hold", "easing.hold"],
+                    ["ease-in", "Ease in", "easing.in"],
+                    ["ease-out", "Ease out", "easing.out"],
+                    ["ease-in-out", "Ease in out", "easing.inout"]
+                ] as [Easing, string, string][]).map(s => ({
+                    type: "simple",
+                    name: s[1],
+                    icon: s[2],
+                    click() {
+                        prop.modify(keyframe, { easing: s[0] });
+                    },
+                }))
+            },
+            {
+                type: "simple",
+                name: "Seek to this",
+                click() { dispatcher("seekto", keyframe.time); }
+            },
+            {
+                type: "simple",
+                name: "Delete keyframe",
+                icon: "delete",
+                click() {
+                    prop.delete(keyframe);
+                    dispatcher("update", object);
+                },
+            }
+        ]);
+    }
 </script>
 
 <svelte:body
@@ -123,7 +162,10 @@
                         {#each prop as keyframe}
                             <div
                                 class="keyframe"
+                                role="button"
+                                tabindex="0"
                                 style:left="{(keyframe.time - scroll) * zoom / 1000}px"
+                                on:contextmenu={e => handleKeyframeContextMenu(e, prop, keyframe)}
                             ></div>
                         {/each}
                     </div>

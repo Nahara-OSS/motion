@@ -109,6 +109,7 @@
                 <TimelineTrack
                     {labelWidth} {zoom} {object} {scroll}
                     on:update={() => currentScene.update(a => a)}
+                    on:seekto={e => app.updateSeekhead({ ...$seekhead, position: e.detail })}
                 />
             {/each}
         {/if}
