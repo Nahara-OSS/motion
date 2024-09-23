@@ -29,12 +29,13 @@
     let draggingPulltab: "left" | "right" | "none" = "none";
     let eventEx = 0;
     let oldTimeStart = 0, oldTimeEnd = 0;
+    let prevTimeStart = 0;
     // TODO implement multiselect dragging
 
     function handleLifespanDragStart(e: MouseEvent) {
         draggingLifespan = true;
         eventEx = e.clientX;
-        oldTimeStart = object.timeStart;
+        oldTimeStart = prevTimeStart = object.timeStart;
         oldTimeEnd = object.timeEnd;
     }
 
@@ -50,8 +51,22 @@
 
         if (draggingLifespan) {
             const nextTimeStart = snapping.snapTimeline(Math.max(oldTimeStart + eventDx * 1000 / zoom, 0));
+            const deltaTime = nextTimeStart - prevTimeStart;
             object.timeStart = nextTimeStart;
             object.timeEnd = oldTimeEnd + (nextTimeStart - oldTimeStart);
+            prevTimeStart = nextTimeStart;
+
+            // Hold shift to ignore keyframes
+            if (!e.shiftKey) {
+                const animatedProps: IAnimatable<any>[] = (object.object.properties as any[])
+                    .filter(v => !v["isSimple"])
+                    .filter(v => (v as IAnimatable<any>).animated);
+
+                for (const prop of animatedProps) {
+                    for (const kf of [...prop]) prop.modify(kf, { time: kf.time + deltaTime });
+                }
+            }
+
             dispatcher("update", object);
         }
 
@@ -110,11 +125,42 @@
             }
         ]);
     }
+
+    let draggingKeyframe: Keyframe<any> | undefined = undefined;
+    let draggingKeyframeInProp: IAnimatable<any> | undefined = undefined;
+    let oldKeyframeTime = 0;
+    let draggedKeyframe = false;
+
+    function handleKeyframeDragStart<T>(e: MouseEvent, prop: IAnimatable<T>, keyframe: Keyframe<T>) {
+        draggingKeyframe = keyframe;
+        draggingKeyframeInProp = prop;
+        oldKeyframeTime = keyframe.time;
+        draggedKeyframe = false;
+        eventEx = e.clientX;
+    }
+
+    function handleKeyframeDrag(e: MouseEvent) {
+        if (!draggingKeyframe) return;
+        draggingKeyframe = draggingKeyframeInProp!.modify(draggingKeyframe, {
+            time: snapping.snapTimeline(Math.max(oldKeyframeTime + (e.clientX - eventEx) * 1000 / zoom, 0))
+        }) ?? undefined;
+        draggedKeyframe = true;
+        dispatcher("update", object);
+    }
+
+    function handleKeyframeDrop() {
+        if (!draggingKeyframe) return;
+        if (!draggedKeyframe) dispatcher("seekto", draggingKeyframe.time);
+        draggingKeyframe = undefined;
+        draggingKeyframeInProp = undefined;
+    }
 </script>
 
 <svelte:body
     on:mousemove={handleDrag}
+    on:mousemove={handleKeyframeDrag}
     on:mouseup={handleDrop}
+    on:mouseup={handleKeyframeDrop}
 />
 
 <div class="object">
@@ -166,6 +212,7 @@
                                 tabindex="0"
                                 style:left="{(keyframe.time - scroll) * zoom / 1000}px"
                                 on:contextmenu={e => handleKeyframeContextMenu(e, prop, keyframe)}
+                                on:mousedown={e => handleKeyframeDragStart(e, prop, keyframe)}
                             ></div>
                         {/each}
                     </div>
