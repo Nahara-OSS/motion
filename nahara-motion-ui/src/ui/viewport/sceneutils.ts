@@ -160,13 +160,19 @@ export function calculateViewportButtons0(
 
         out.push({
             geometry: {
-                position: { x: -5, y: -5 },
-                size: { x: size.x + 10, y: size.y + 10 }
+                position: { x: 0, y: 0 },
+                size
             },
-            drawStyle: "outline",
+            drawStyle: "hidden",
             input: {
                 position: { x: 1, y: 1 }
             }
+        }, {
+            geometry: {
+                position: { x: -5, y: -5 },
+                size: { x: size.x + 10, y: size.y + 10 }
+            },
+            drawStyle: "outline"
         }, {
             geometry: {
                 position: { x: -12, y: -12 },

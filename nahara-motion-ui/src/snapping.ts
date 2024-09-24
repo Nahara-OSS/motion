@@ -1,4 +1,6 @@
 import { writable } from "svelte/store";
+import { app } from "./appglobal";
+import type { IObjectContainer } from "@nahara/motion";
 
 export type TimelineSnappingMode =
     | "free" // Move objects freely
@@ -14,6 +16,23 @@ export type ViewportSnappingMode =
 
 function gridSnap(coord: number, segment: number): number {
     return Math.round(coord / segment) * segment;
+}
+
+function nearestSnap(coord: number): number {
+    const scene = app.getCurrentScene();
+    if (!scene) return coord;
+
+    let nearestPoint = -Infinity;
+
+    function nearestSnapFromContainer(container: IObjectContainer) {
+        for (const obj of container) {
+            if (Math.abs(coord - obj.timeStart) < Math.abs(coord - nearestPoint)) nearestPoint = obj.timeStart;
+            if (Math.abs(coord - obj.timeEnd) < Math.abs(coord - nearestPoint)) nearestPoint = obj.timeEnd;
+        }
+    }
+
+    nearestSnapFromContainer(scene);
+    return Math.abs(coord - nearestPoint) < 100 ? nearestPoint : coord;
 }
 
 export namespace snapping {
@@ -37,6 +56,7 @@ export namespace snapping {
 
     export function snapTimeline(time: number, mode = timeline): number {
         if (mode == "free") return time;
+        if (mode == "nearest-object") return nearestSnap(time);
 
         if (typeof mode == "object") {
             if (mode.type == "grid") return gridSnap(time, mode.msPerSegment);
