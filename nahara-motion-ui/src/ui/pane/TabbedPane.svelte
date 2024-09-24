@@ -35,6 +35,7 @@
 
     function handleTabMouseMove(e: MouseEvent) {
         if (clickedTab == "") return;
+        if (dragEx == e.clientX && dragEy == e.clientY) return;
 
         if (draggingTab == "") {
             draggingTab = clickedTab;
