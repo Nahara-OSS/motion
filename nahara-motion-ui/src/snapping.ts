@@ -40,6 +40,7 @@ export namespace snapping {
 
         if (typeof mode == "object") {
             if (mode.type == "grid") return gridSnap(time, mode.msPerSegment);
+            if (mode.type == "bpm") return gridSnap(time, 60000 / mode.bpm / mode.division);
         }
 
         return time;

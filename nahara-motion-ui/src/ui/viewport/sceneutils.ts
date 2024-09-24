@@ -139,10 +139,29 @@ export function calculateViewportButtons0(
             }
         });
     } else {
+        if ((object.object as ISceneObjectWithRotationData).isRotatable) {
+            out.push({
+                geometry: {
+                    position: { x: (size?.x ?? 0) / 2 - 1, y: -40 },
+                    size: { x: 2, y: 40 }
+                },
+                drawStyle: "filled"
+            }, {
+                geometry: {
+                    position: { x: (size?.x ?? 0) / 2 - 5, y: -40 },
+                    size: { x: 10, y: 10 }
+                },
+                drawStyle: "filled",
+                input: {
+                    rotation: true
+                }
+            });
+        }
+
         out.push({
             geometry: {
-                position: { x: 0, y: 0 },
-                size: size
+                position: { x: -5, y: -5 },
+                size: { x: size.x + 10, y: size.y + 10 }
             },
             drawStyle: "outline",
             input: {
@@ -234,19 +253,6 @@ export function calculateViewportButtons0(
         });
     }
 
-    if ((object.object as ISceneObjectWithRotationData).isRotatable) {
-        out.push({
-            geometry: {
-                position: { x: (size?.x ?? 0) / 2 - 5, y: -40 },
-                size: { x: 10, y: 10 }
-            },
-            drawStyle: "filled",
-            input: {
-                rotation: true
-            }
-        });
-    }
-
     return out;
 }
 
@@ -277,211 +283,4 @@ export function getAbsoluteInViewport(object: ViewportSceneObject, currentTime: 
     }
 
     return { position, size, rotation };
-}
-
-export function calculateViewportButtonGeometries(
-    objectGeom: ReturnType<typeof getAbsoluteInViewport>,
-    viewportScale: number = 1
-): {
-    geometry: { // The geometry of the button - for handling clicks or drawing rectangles
-        position: Vec2,
-        size: Vec2,
-        rotation: number
-    },
-    drawMode: "hidden" | "filled" | "border", // Drawing mode
-    inputMatrix?: { // If present: Can be dragged
-        position: Vec2,
-        size: Vec2,
-        rotation: Vec2
-    }
-}[] | undefined {
-    if (!objectGeom) return;
-    if (!objectGeom.position) return; // Can't handle object without position at this moment
-
-    if (!objectGeom.size) return [{
-        geometry: {
-            position: { x: objectGeom.position.x * viewportScale - 5, y: objectGeom.position.y * viewportScale - 5 },
-            size: { x: 11, y: 11 },
-            rotation: 0
-        },
-        drawMode: "filled",
-        inputMatrix: {
-            position: { x: 1, y: 1 },
-            size: { x: 0, y: 0 },
-            rotation: { x: 0, y: 0 }
-        }
-    }];
-
-    const out: (ReturnType<typeof calculateViewportButtonGeometries> & {}) = [
-        {
-            geometry: {
-                position: { x: objectGeom.position.x * viewportScale, y: objectGeom.position.y * viewportScale },
-                size: { x: objectGeom.size.x * viewportScale, y: objectGeom.size.y * viewportScale },
-                rotation: 0
-            },
-            drawMode: "hidden",
-            inputMatrix: {
-                position: { x: 1, y: 1 },
-                size: { x: 0, y: 0 },
-                rotation: { x: 0, y: 0 }
-            }
-        },
-        {
-            geometry: {
-                position: { x: objectGeom.position.x * viewportScale - 5, y: objectGeom.position.y * viewportScale - 5 },
-                size: { x: objectGeom.size.x * viewportScale + 10, y: objectGeom.size.y * viewportScale + 10 },
-                rotation: objectGeom.rotation ?? 0
-            },
-            drawMode: "border",
-        },
-        {
-            geometry: {
-                position: {
-                    x: objectGeom.position.x * viewportScale - 11,
-                    y: objectGeom.position.y * viewportScale - 11
-                },
-                size: { x: 11, y: 11 },
-                rotation: 0
-            },
-            drawMode: "filled",
-            inputMatrix: {
-                position: { x: 1, y: 1 },
-                size: { x: -1, y: -1 },
-                rotation: { x: 0, y: 0 }
-            }
-        },
-        {
-            geometry: {
-                position: {
-                    x: (objectGeom.position.x + objectGeom.size.x) * viewportScale,
-                    y: objectGeom.position.y * viewportScale - 11
-                },
-                size: { x: 11, y: 11 },
-                rotation: 0
-            },
-            drawMode: "filled",
-            inputMatrix: {
-                position: { x: 0, y: 1 },
-                size: { x: 1, y: -1 },
-                rotation: { x: 0, y: 0 }
-            }
-        },
-        {
-            geometry: {
-                position: {
-                    x: objectGeom.position.x * viewportScale - 11,
-                    y: (objectGeom.position.y + objectGeom.size.y) * viewportScale
-                },
-                size: { x: 11, y: 11 },
-                rotation: 0
-            },
-            drawMode: "filled",
-            inputMatrix: {
-                position: { x: 1, y: 0 },
-                size: { x: -1, y: 1 },
-                rotation: { x: 0, y: 0 }
-            }
-        },
-        {
-            geometry: {
-                position: {
-                    x: (objectGeom.position.x + objectGeom.size.x) * viewportScale,
-                    y: (objectGeom.position.y + objectGeom.size.y) * viewportScale
-                },
-                size: { x: 11, y: 11 },
-                rotation: 0
-            },
-            drawMode: "filled",
-            inputMatrix: {
-                position: { x: 0, y: 0 },
-                size: { x: 1, y: 1 },
-                rotation: { x: 0, y: 0 }
-            }
-        },
-        {
-            geometry: {
-                position: {
-                    x: (objectGeom.position.x + objectGeom.size.x / 2) * viewportScale - 11,
-                    y: objectGeom.position.y * viewportScale - 11
-                },
-                size: { x: 22, y: 11 },
-                rotation: 0
-            },
-            drawMode: "filled",
-            inputMatrix: {
-                position: { x: 0, y: 1 },
-                size: { x: 0, y: -1 },
-                rotation: { x: 0, y: 0 }
-            }
-        },
-        {
-            geometry: {
-                position: {
-                    x: (objectGeom.position.x + objectGeom.size.x / 2) * viewportScale - 11,
-                    y: (objectGeom.position.y + objectGeom.size.y) * viewportScale
-                },
-                size: { x: 22, y: 11 },
-                rotation: 0
-            },
-            drawMode: "filled",
-            inputMatrix: {
-                position: { x: 0, y: 0 },
-                size: { x: 0, y: 1 },
-                rotation: { x: 0, y: 0 }
-            }
-        },
-        {
-            geometry: {
-                position: {
-                    x: (objectGeom.position.x) * viewportScale - 11,
-                    y: (objectGeom.position.y + objectGeom.size.y / 2) * viewportScale - 11
-                },
-                size: { x: 11, y: 22 },
-                rotation: 0
-            },
-            drawMode: "filled",
-            inputMatrix: {
-                position: { x: 1, y: 0 },
-                size: { x: -1, y: 0 },
-                rotation: { x: 0, y: 0 }
-            }
-        },
-        {
-            geometry: {
-                position: {
-                    x: (objectGeom.position.x + objectGeom.size.x) * viewportScale,
-                    y: (objectGeom.position.y + objectGeom.size.y / 2) * viewportScale - 11
-                },
-                size: { x: 11, y: 22 },
-                rotation: 0
-            },
-            drawMode: "filled",
-            inputMatrix: {
-                position: { x: 0, y: 0 },
-                size: { x: 1, y: 0 },
-                rotation: { x: 0, y: 0 }
-            }
-        },
-    ];
-
-    if (objectGeom.rotation != null) {
-        out.push({
-            geometry: {
-                position: {
-                    x: (objectGeom.position.x + objectGeom.size.x / 2) * viewportScale - 5,
-                    y: objectGeom.position.y * viewportScale - 40
-                },
-                size: { x: 11, y: 11 },
-                rotation: 0
-            },
-            drawMode: "filled",
-            inputMatrix: {
-                position: { x: 0, y: 0 },
-                size: { x: 0, y: 0 },
-                rotation: { x: 1, y: 0 } // TODO
-            }
-        });
-    }
-
-    return out;
 }

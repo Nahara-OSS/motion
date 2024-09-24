@@ -2,7 +2,7 @@
     import { onMount } from "svelte";
     import { app } from "../../appglobal";
     import { objects, type IAnimatable, type IObjectContainer, type IScene, type ISceneContainerObject, type ISceneObjectWithPositionalData, type ISceneObjectWithRotationData, type ISceneObjectWithSizeData, type ISceneObjectWithViewportEditing, type SceneObjectInfo } from "@nahara/motion";
-    import { buildViewportSceneTree, calculateViewportButtonGeometries, calculateViewportButtons0, findObjectFromPoint, getAbsoluteInViewport, getAbsoluteInViewport0, type ViewportSceneObject, type ViewportSceneTree } from "./sceneutils";
+    import { buildViewportSceneTree, calculateViewportButtons0, findObjectFromPoint, getAbsoluteInViewport, getAbsoluteInViewport0, type ViewportSceneTree } from "./sceneutils";
     import { openMenuAt } from "../menu/MenuHost.svelte";
     import type { DropdownEntry } from "../menu/FancyMenu";
 

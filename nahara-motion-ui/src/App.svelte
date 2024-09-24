@@ -8,6 +8,7 @@
     import PropertiesPane from "./ui/properties/PropertiesPane.svelte";
     import TimelinePane from "./ui/timeline/TimelinePane.svelte";
     import ViewportPane from "./ui/viewport/ViewportPane.svelte";
+    import PopupHost from "./ui/popup/PopupHost.svelte";
 
     let layout: PaneLayout = {
         type: "split",
@@ -48,6 +49,7 @@
         }} on:layoutupdate={e => layout = e.detail} />
         <MediaBar />
     </div>
+    <PopupHost />
     <MenuHost />
 </div>
 
