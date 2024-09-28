@@ -280,6 +280,7 @@
                     box-sizing: border-box;
                     text-overflow: ellipsis;
                     overflow: auto;
+                    white-space: nowrap;
                 }
             }
 

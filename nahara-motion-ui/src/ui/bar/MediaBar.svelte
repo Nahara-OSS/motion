@@ -7,6 +7,7 @@
     import { openPopupAt } from "../popup/PopupHost.svelte";
     import { getSnappingModeType } from "../popup/SnappingPopup";
     import SnappingPopup from "../popup/SnappingPopup.svelte";
+    import TimeDisplay from "./TimeDisplay.svelte";
 
     const timelineSnapping = snapping.timelineStore;
     const seekhead = app.currentSeekheadStore;
@@ -64,7 +65,9 @@
         <Button label="-> {displayQuickSeekValue}" keys={["->"]} on:click={() => seekBy(quickSeekMs)} />
         <Button label="-> End" keys={["End"]} on:click={seekToEnd} />
     </div>
-    <div class="right"></div>
+    <div class="right">
+        <TimeDisplay time={$seekhead.position} />
+    </div>
 </div>
 
 <style lang="scss">

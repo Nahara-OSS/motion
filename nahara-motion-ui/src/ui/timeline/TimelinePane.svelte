@@ -79,10 +79,8 @@
 />
 
 <div class="wrapper">
-    <div class="time-seekbar-combo">
-        <div class="time" style:width="{labelWidth}px">
-            <div class="seconds">{displaySeconds}</div>
-            <div class="millis">{displayMillis}</div>
+    <div class="actions-seekbar-combo">
+        <div class="actions" style:width="{labelWidth}px">
         </div>
         <!-- svelte-ignore a11y-no-static-element-interactions -->
         <div class="seekbar" on:mousedown|self={handleSeekbarMouseDown} on:wheel={handleWheelEvent}>
@@ -129,29 +127,17 @@
         &::-webkit-scrollbar { display: none; }
     }
 
-    .time-seekbar-combo {
+    .actions-seekbar-combo {
         display: flex;
         height: 24px;
         padding: 5px 0 0;
         align-items: center;
         border-bottom: 1px solid #d1d1d1;
         
-        .time {
+        .actions {
             display: flex;
-            font-feature-settings: 'ss01' 1, 'zero' 1;
-            align-items: flex-end;
-            line-height: 1;
-            height: fit-content;
             padding-left: 8px;
             box-sizing: border-box;
-
-            .seconds {
-                font-size: 18px;
-            }
-
-            .millis {
-                color: #7f7f7f;
-            }
         }
 
         .seekbar {
