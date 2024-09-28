@@ -12,6 +12,7 @@
     const timelineSnapping = snapping.timelineStore;
     const seekhead = app.currentSeekheadStore;
     const scene = app.currentSceneStore;
+    const playbackState = app.playbackStateStore;
 
     let quickSeekMs: number;
     let displayQuickSeekValue: string;
@@ -61,7 +62,7 @@
     <div class="middle">
         <Button label="Start <-" keys={["Home"]} on:click={() => app.updateSeekhead({ ...$seekhead, position: 0 })} />
         <Button label="{displayQuickSeekValue} <-" keys={["<-"]} on:click={() => seekBy(-quickSeekMs)} />
-        <Button label="Play" keys={["Space"]} on:click={() => playbackToggle("forward")} />
+        <Button label={$playbackState == "paused" ? "Play" : "Pause"} keys={["Space"]} on:click={() => playbackToggle("forward")} />
         <Button label="-> {displayQuickSeekValue}" keys={["->"]} on:click={() => seekBy(quickSeekMs)} />
         <Button label="-> End" keys={["End"]} on:click={seekToEnd} />
     </div>
