@@ -1,5 +1,5 @@
 <script context="module" lang="ts">
-    export let openPopupAt: (x: number, y: number, title: string, component: any) => void;
+    export let openPopupAt: (x: number, y: number, title: string, component: any, data?: any) => void;
 </script>
 
 <script lang="ts">
@@ -9,14 +9,16 @@
     let y = 0;
     let title: string;
     let component: any;
+    let data: any;
     let box: HTMLDivElement;
     let wrapperBox: HTMLDivElement | undefined = undefined;
 
-    openPopupAt = (px, py, ptitle, pcomponent) => {
+    openPopupAt = (px, py, ptitle, pcomponent, pdata) => {
         x = px - (box?.getBoundingClientRect()?.x ?? 0);
         y = py - (box?.getBoundingClientRect()?.y ?? 0);
         title = ptitle;
         component = pcomponent;
+        data = pdata;
     };
 
     $: {
@@ -34,7 +36,7 @@
 <div class="popup-host" class:active={!!component} bind:this={box} on:mousedown|self={() => component = undefined}>
     {#if component}
         <div class="wrapper" style:left="{x}px" style:top="{y}px" bind:this={wrapperBox}>
-            <Popup {title}><svelte:component this={component} /></Popup>
+            <Popup {title}><svelte:component this={component} {...(data ?? {})} /></Popup>
         </div>
     {/if}
 </div>

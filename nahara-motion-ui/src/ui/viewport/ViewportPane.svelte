@@ -1,10 +1,12 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { app } from "../../appglobal";
-    import { objects, type IAnimatable, type IObjectContainer, type IScene, type ISceneContainerObject, type ISceneObjectWithPositionalData, type ISceneObjectWithRotationData, type ISceneObjectWithSizeData, type ISceneObjectWithViewportEditing, type SceneObjectInfo } from "@nahara/motion";
+    import { objects, type Color, type IAnimatable, type IObjectContainer, type IScene, type ISceneContainerObject, type ISceneObjectWithPositionalData, type ISceneObjectWithRotationData, type ISceneObjectWithSizeData, type ISceneObjectWithViewportEditing, type SceneObjectInfo } from "@nahara/motion";
     import { buildViewportSceneTree, calculateViewportButtons0, findObjectFromPoint, getAbsoluteInViewport, getAbsoluteInViewport0, type ViewportSceneTree } from "./sceneutils";
     import { openMenuAt } from "../menu/MenuHost.svelte";
     import type { DropdownEntry } from "../menu/FancyMenu";
+    import { openPopupAt } from "../popup/PopupHost.svelte";
+    import ColorPickerPopup from "../popup/ColorPickerPopup.svelte";
 
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D;
@@ -338,6 +340,19 @@
             });
 
             if ($currentSelection) root.push({
+                type: "simple",
+                name: "Change label color",
+                click() {
+                    const target = $currentSelection.primary;
+                    openPopupAt(e.clientX, e.clientY, "Label color", ColorPickerPopup, {
+                        initial: target.color,
+                        callback(c: string) {
+                            target.color = c;
+                            currentScene.update(a => a);
+                        }
+                    });
+                },
+            }, {
                 type: "simple",
                 name: "Delete selection",
                 click() {
