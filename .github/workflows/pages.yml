@@ -1,0 +1,56 @@
+name: GitHub Pages Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions: 
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: 'gh-pages'
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 21
+          cache: npm
+      - name: Install pnpm
+        run: npm i -g pnpm
+      - name: Build Nahara's Motion Engine
+        working-directory: nahara-motion
+        run: |
+          pnpm install
+          pnpm build
+      - name: Build Nahara's Motion UI
+        working-directory: nahara-motion-ui
+        run: |
+          pnpm install
+          pnpm build
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          path: nahara-motion-ui/dist/
+          name: nahara-motion-ui
+      - uses: actions/configure-pages@v4
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: nahara-motion-ui/dist
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: [build]
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
