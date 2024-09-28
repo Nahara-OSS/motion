@@ -9,6 +9,7 @@
     import TimelinePane from "./ui/timeline/TimelinePane.svelte";
     import ViewportPane from "./ui/viewport/ViewportPane.svelte";
     import PopupHost from "./ui/popup/PopupHost.svelte";
+    import AnimationGraphPane from "./ui/graph/AnimationGraphPane.svelte";
 
     let layout: PaneLayout = {
         type: "split",
@@ -25,7 +26,7 @@
             type: "split",
             direction: SplitDirection.BottomToTop,
             firstSize: 300,
-            first: { type: "tab", tabs: ["timeline", "timingGraph"], selected: "timeline" },
+            first: { type: "tab", tabs: ["timeline", "animationGraph"], selected: "timeline" },
             second: {
                 type: "split",
                 direction: SplitDirection.RightToLeft,
@@ -45,6 +46,7 @@
             if (type == "timeline") return TimelinePane;
             if (type == "outliner") return OutlinerPane;
             if (type == "viewport") return ViewportPane;
+            if (type == "animationGraph") return AnimationGraphPane;
             return Button;
         }} on:layoutupdate={e => layout = e.detail} />
         <MediaBar />
