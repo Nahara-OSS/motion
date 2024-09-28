@@ -184,7 +184,10 @@
             // Clicked none of the object's button
         }
 
-        const clicked = findObjectFromPoint(sx, sy, $seekhead.position, sceneTree!.root);
+        const clicked = findObjectFromPoint(
+            sx, sy, $seekhead.position, sceneTree!.root,
+            o => $seekhead.position >= o.scene.timeStart && $seekhead.position < o.scene.timeEnd
+        );
 
         if (clicked) {
             clickingObject = clicked.scene;
@@ -293,7 +296,8 @@
             const clicked = findObjectFromPoint(
                 sx, sy,
                 $seekhead.position,
-                subtree
+                subtree,
+                o => $seekhead.position >= o.scene.timeStart && $seekhead.position < o.scene.timeEnd
             );
 
             if (clicked) {
