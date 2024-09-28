@@ -36,11 +36,6 @@ jobs:
         run: |
           pnpm install
           pnpm build
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          path: nahara-motion-ui/dist/
-          name: nahara-motion-ui
       - uses: actions/configure-pages@v4
       - uses: actions/upload-pages-artifact@v3
         with:
