@@ -192,8 +192,21 @@
                 style:background-color="{object.color}"
                 on:mousedown|self={handleLifespanDragStart}
             >
-                <div class="pulltab-left" on:mousedown={e => handlePulltabDragStart(e, "left")}></div>
-                <div class="pulltab-right" on:mousedown={e => handlePulltabDragStart(e, "right")}></div>
+                {#if ((object.timeEnd - object.timeStart) * zoom / 1000) > 50}
+                    <div class="label" on:mousedown|self={handleLifespanDragStart}>{object.name}</div>
+                {/if}
+                {#if ((object.timeEnd - object.timeStart) * zoom / 1000) > 10}
+                    <div
+                        class="pulltab-left"
+                        style:width="{Math.min(Math.max((object.timeEnd - object.timeStart) * zoom / 1000 / 2, 5), 10)}px"
+                        on:mousedown={e => handlePulltabDragStart(e, "left")}
+                    ></div>
+                    <div
+                        class="pulltab-right"
+                        style:width="{Math.min(Math.max((object.timeEnd - object.timeStart) * zoom / 1000 / 2, 5), 10)}px"
+                        on:mousedown={e => handlePulltabDragStart(e, "right")}
+                    ></div>
+                {/if}
             </div>
         </div>
     </div>
@@ -247,6 +260,15 @@
                 box-sizing: border-box;
                 cursor: grab;
                 &:active { cursor: grabbing; }
+
+                .label {
+                    position: absolute;
+                    padding: 5px 15px;
+                    width: 100%;
+                    box-sizing: border-box;
+                    text-overflow: ellipsis;
+                    overflow: auto;
+                }
             }
 
             .keyframe {
@@ -330,7 +352,6 @@
 
     .pulltab-left, .pulltab-right {
         position: absolute;
-        width: 10px;
         height: 100%;
         background-color: #0000001f;
         cursor: ew-resize;
