@@ -5,9 +5,12 @@ Motion graphics editor.
 - No internet access required (except for first-time users)
 - Free and open source ([MIT License](./LICENSE))
 
+Try it out: [Open Nahara's Motion](https://nahara-oss.github.io/motion/)
+
 ![Screenshot of Nahara's Motion](docs/screenshooted.png)
 
 ## Quick links
+- [Open Nahara's Motion](https://nahara-oss.github.io/motion/)
 - [Documentation](./docs/README.md)
 
 ## Getting started
