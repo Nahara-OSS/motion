@@ -12,6 +12,7 @@ export * from "./project/project.js";
 export * from "./render/context.js";
 
 export * from "./scene/animation.js";
+export * from "./scene/easing.js";
 export * from "./scene/object.js";
 export * from "./scene/scene.js";
 

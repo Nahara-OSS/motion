@@ -1,5 +1,6 @@
 import { Color, Vec2, Vec3, Vec4 } from "../types.js";
 import { utils } from "../utils.js";
+import { easing, Easing } from "./easing.js";
 
 export interface IAnimatable<T> extends Iterable<Keyframe<T>> {
     /**
@@ -97,9 +98,6 @@ export interface Keyframe<T> {
 }
 
 // TODO
-export type PredefinedEasing = "linear" | "hold" | "ease-in" | "ease-out" | "ease-in-out";
-export type BezierEasing = { type: "bezier", startControlPoint: Vec2, endControlPoint: Vec2 };
-export type Easing = PredefinedEasing | BezierEasing;
 export enum PropertyHint { None }
 export type Interpolator<T> = (from: T, to: T, progress: number) => T;
 
@@ -192,7 +190,7 @@ export class Animatable<T> implements IAnimatable<T> {
         const prev = this.keyframes[insertAt - 1];
         const next = this.keyframes[insertAt] ?? { time: time + 1, value: prev.value, easing: prev.easing };
         const progress = (time - prev.time) / (next.time - prev.time);
-        return this.interpolator(prev.value, next.value, progress);
+        return this.interpolator(prev.value, next.value, easing(next.easing, progress));
     }
 
     set(time: number, value: T): Keyframe<T> {
