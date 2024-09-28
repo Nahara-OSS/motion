@@ -13,6 +13,7 @@
     let tracksContainerHeight = 0;
 
     const currentScene = app.currentSceneStore;
+    const currentSelection = app.currentSelectionStore;
     const seekhead = app.currentSeekheadStore;
     const dispatcher = createEventDispatcher();
 
@@ -100,8 +101,13 @@
             {#each [...$currentScene].reverse() as object}
                 <TimelineTrack
                     {labelWidth} {zoom} {object} {scroll}
+                    selectStateQuery={o =>
+                        o == $currentSelection?.primary ? "primary"
+                        : ($currentSelection?.multiple ?? []).includes(o) ? "secondary"
+                        : "none"}
                     on:update={() => currentScene.update(a => a)}
                     on:seekto={e => app.updateSeekhead({ ...$seekhead, position: e.detail })}
+                    on:select={e => app.selectSingle(e.detail)}
                 />
             {/each}
         {/if}

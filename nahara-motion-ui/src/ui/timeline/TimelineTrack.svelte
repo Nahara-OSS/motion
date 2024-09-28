@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Easing, IAnimatable, IObjectContainer, IObjectProperty, ISceneContainerObject, Keyframe, SceneObjectInfo } from "@nahara/motion";
+    import type { Easing, IAnimatable, IObjectContainer, IObjectProperty, ISceneContainerObject, Keyframe, Scene, SceneObjectInfo } from "@nahara/motion";
     import Button from "../input/Button.svelte";
     import { createEventDispatcher } from "svelte";
     import { snapping } from "../../snapping";
@@ -11,6 +11,7 @@
     export let labelWidth: number;
     export let zoom: number;
     export let scroll: number;
+    export let selectStateQuery: (object: SceneObjectInfo) => "primary" | "secondary" | "none";
 
     let expanded = false;
     let animatedProperties: IAnimatable<any>[] = [];
@@ -37,6 +38,7 @@
         eventEx = e.clientX;
         oldTimeStart = prevTimeStart = object.timeStart;
         oldTimeEnd = object.timeEnd;
+        dispatcher("select", object);
     }
 
     function handlePulltabDragStart(e: MouseEvent, side: "left" | "right") {
@@ -44,6 +46,7 @@
         eventEx = e.clientX;
         oldTimeStart = object.timeStart;
         oldTimeEnd = object.timeEnd;
+        dispatcher("select", object);
     }
 
     function handleDrag(e: MouseEvent) {
@@ -164,7 +167,8 @@
     on:mouseup={handleKeyframeDrop}
 />
 
-<div class="object">
+<!-- svelte-ignore a11y-no-static-element-interactions -->
+<div class="object select-state-{selectStateQuery(object)}">
     <div class="track">
         <div class="left" style:width="{labelWidth}px">
             <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -180,7 +184,7 @@
                 role="button"
                 tabindex="0"
                 class="label"
-                on:click={() => expanded = !expanded}
+                on:click={() => { expanded = !expanded; dispatcher("select", object); }}
             >{object.name}</div>
         </div>
         <div class="timeline">
@@ -234,7 +238,15 @@
             {/each}
             {#if childrenObjs}
                 {#each childrenObjs as childObj}
-                    <svelte:self object={childObj} labelWidth={labelWidth - 24} {zoom} {scroll} on:update />
+                    <svelte:self
+                        object={childObj}
+                        labelWidth={labelWidth - 24}
+                        {zoom}
+                        {scroll}
+                        {selectStateQuery}
+                        on:update
+                        on:select
+                    />
                 {/each}
             {/if}
         </div>
@@ -397,9 +409,11 @@
 
     
     .object {
-        &:hover {
+        &:hover, &.select-state-primary, &.select-state-secondary {
             background-color: #0000000f;
+        }
 
+        &:hover {
             .children-tracks {
                 > .track, > :global(.object) {
                     &::before, &::after {
