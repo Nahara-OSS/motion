@@ -1,10 +1,11 @@
 import { IAnimatable, Animatable } from "../../scene/animation.js";
 import { ISceneObject, ISceneObjectType } from "../../scene/object.js";
+import { AnimatableObjectProperty } from "../../scene/property.js";
 import { Vec2 } from "../../types.js";
 
 export class Data1D implements ISceneObject {
     data: IAnimatable<number> = Animatable.scalar("data");
-    properties = [this.data];
+    properties = [new AnimatableObjectProperty(this.data)];
     render(): void {}
 
     static readonly Type: ISceneObjectType<Data1D, { data: any }> = {

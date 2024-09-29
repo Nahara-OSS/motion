@@ -14,6 +14,7 @@ export * from "./render/context.js";
 export * from "./scene/animation.js";
 export * from "./scene/easing.js";
 export * from "./scene/object.js";
+export * from "./scene/property.js";
 export * from "./scene/scene.js";
 
 export * from "./types.js";

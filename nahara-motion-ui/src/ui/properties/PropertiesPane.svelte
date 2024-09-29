@@ -7,7 +7,7 @@
     const currentSelection = app.currentSelectionStore;
     const seekhead = app.currentSeekheadStore;
     let primarySelection: motion.SceneObjectInfo | undefined;
-    let properties: (motion.IAnimatable<any> | motion.IObjectProperty<any>)[];
+    let properties: motion.IObjectProperty<any>[];
 
     $: {
         $currentScene;
@@ -15,27 +15,7 @@
         properties = primarySelection?.object.properties ?? [];
     }
 
-    function isSimple(prop: motion.IAnimatable<any> | motion.IObjectProperty<any>) {
-        return (prop as motion.IObjectProperty<any>).isSimple;
-    }
-
-    function castToAnimatable(prop: motion.IAnimatable<any> | motion.IObjectProperty<any>): motion.IAnimatable<any> {
-        return prop as motion.IAnimatable<any>;
-    }
-
-    function castToSimple(prop: motion.IAnimatable<any> | motion.IObjectProperty<any>): motion.IObjectProperty<any> {
-        return prop as motion.IObjectProperty<any>
-    }
-
-    function cast<T>(input: T | undefined): T {
-        return input as T;
-    }
-
-    function handleAnimatablePropertyChange(prop: motion.IAnimatable<any>, newValue: any) {
-        if (prop.animated) prop.set($seekhead.position, newValue);
-        else prop.defaultValue = newValue;
-        currentScene.update(a => a);
-    }
+    function cast<T>(input: T | undefined): T { return input as T; }
 
     function handleKeyframeButton(prop: motion.IAnimatable<any>) {
         const now = prop.getKeyframe($seekhead.position);
@@ -68,20 +48,20 @@
             on:update={e => { cast(primarySelection).timeEnd = e.detail; currentScene.update(a => a); }}
         />
         {#each properties as property}
-            {#if isSimple(property)}
+            {#if property instanceof motion.AnimatableObjectProperty}
                 <Property
                     name={property.translationKey}
-                    value={castToSimple(property).get()}
-                    on:update={e => { castToSimple(property).set(e.detail); currentScene.update(a => a); }}
+                    value={property.get($seekhead.position)}
+                    animatable
+                    animating={!!property.animatable.getKeyframe($seekhead.position)}
+                    on:update={e => { cast(property).set($seekhead.position, e.detail); currentScene.update(a => a); }}
+                    on:keyframebutton={() => handleKeyframeButton(property.animatable)}
                 />
             {:else}
                 <Property
                     name={property.translationKey}
-                    value={castToAnimatable(property).get($seekhead.position)}
-                    animatable
-                    animating={!!castToAnimatable(property).getKeyframe($seekhead.position)}
-                    on:update={e => handleAnimatablePropertyChange(castToAnimatable(property), e.detail)}
-                    on:keyframebutton={() => handleKeyframeButton(castToAnimatable(property))}
+                    value={property.get($seekhead.position)}
+                    on:update={e => { cast(property).set($seekhead.position, e.detail); currentScene.update(a => a); }}
                 />
             {/if}
         {/each}

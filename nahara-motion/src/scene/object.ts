@@ -4,9 +4,10 @@ import { RenderContext } from "../render/context.js";
 import { Vec2 } from "../types.js";
 import { utils } from "../utils.js";
 import { IAnimatable } from "./animation.js";
+import { IObjectProperty } from "./property.js";
 
 export interface ISceneObject {
-    readonly properties: (IAnimatable<any> | IObjectProperty<any>)[];
+    readonly properties: IObjectProperty<any>[];
 
     /**
      * Render the object to the context, using current transformation. The context transformation before and after this
@@ -15,17 +16,6 @@ export interface ISceneObject {
      * @param context The rendering context.
      */
     render(context: RenderContext): void;
-}
-
-/**
- * A simple property of the object. This was meant for values that can't be interpolated, like `string` for example. As
- * such, these properties can't be animated.
- */
-export interface IObjectProperty<T> {
-    readonly isSimple: true;
-    readonly translationKey: string;
-    get(): T;
-    set(value: T): void;
 }
 
 export interface ISceneObjectType<TObject extends ISceneObject = ISceneObject, TSerialize = any> {

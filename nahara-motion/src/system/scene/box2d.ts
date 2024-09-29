@@ -2,6 +2,7 @@ import { RenderContext } from "../../render/context.js";
 import { Color } from "../../types.js";
 import { Animatable, IAnimatable } from "../../scene/animation.js";
 import { ISceneObjectType, ISceneObjectWithPositionalData, ISceneObjectWithRotationData, ISceneObjectWithSizeData } from "../../scene/object.js";
+import { AnimatableObjectProperty } from "../../scene/property.js";
 
 export class Box2D implements ISceneObjectWithPositionalData, ISceneObjectWithSizeData, ISceneObjectWithRotationData {
     isViewportEditable: true = true;
@@ -16,12 +17,12 @@ export class Box2D implements ISceneObjectWithPositionalData, ISceneObjectWithSi
     color: IAnimatable<Color> = Animatable.color("color", { model: "rgba", r: 255, g: 255, b: 255, a: 255 });
 
     properties = [
-        this.x,
-        this.y,
-        this.width,
-        this.height,
-        this.rotation,
-        this.color
+        new AnimatableObjectProperty(this.x),
+        new AnimatableObjectProperty(this.y),
+        new AnimatableObjectProperty(this.width),
+        new AnimatableObjectProperty(this.height),
+        new AnimatableObjectProperty(this.rotation),
+        new AnimatableObjectProperty(this.color),
     ];
 
     render(context: RenderContext): void {

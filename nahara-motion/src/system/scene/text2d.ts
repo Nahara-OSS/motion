@@ -1,6 +1,7 @@
 import { RenderContext } from "../../render/context.js";
 import { IAnimatable, Animatable } from "../../scene/animation.js";
-import { ISceneObjectWithPositionalData, IObjectProperty, ISceneObjectType } from "../../scene/object.js";
+import { ISceneObjectWithPositionalData, ISceneObjectType } from "../../scene/object.js";
+import { AnimatableObjectProperty, BasicObjectProperty } from "../../scene/property.js";
 import { Color } from "../../types.js";
 
 export class Text2D implements ISceneObjectWithPositionalData {
@@ -17,30 +18,15 @@ export class Text2D implements ISceneObjectWithPositionalData {
     color: IAnimatable<Color> = Animatable.color("color");
 
     properties = [
-        this.x,
-        this.y,
-        this.scaleX,
-        this.scaleY,
-        {
-            isSimple: true,
-            translationKey: "content",
-            get: () => this.content,
-            set: newContent => this.content = newContent
-        } as IObjectProperty<string>,
-        {
-            isSimple: true,
-            translationKey: "font",
-            get: () => this.font,
-            set: newFont => this.font = newFont
-        } as IObjectProperty<string>,
-        {
-            isSimple: true,
-            translationKey: "cjkVertical",
-            get: () => this.cjkVertical,
-            set: newState => this.cjkVertical = newState
-        } as IObjectProperty<boolean>,
-        this.size,
-        this.color
+        new AnimatableObjectProperty(this.x),
+        new AnimatableObjectProperty(this.y),
+        new AnimatableObjectProperty(this.scaleX),
+        new AnimatableObjectProperty(this.scaleY),
+        new BasicObjectProperty("content", () => this.content, newContent => this.content = newContent),
+        new BasicObjectProperty("font", () => this.font, newFont => this.font = newFont),
+        new BasicObjectProperty("cjkVertical", () => this.cjkVertical, state => this.cjkVertical = state),
+        new AnimatableObjectProperty(this.size),
+        new AnimatableObjectProperty(this.color),
     ];
 
     render(context: RenderContext): void {

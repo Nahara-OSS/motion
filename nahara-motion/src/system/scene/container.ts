@@ -1,6 +1,7 @@
 import { RenderContext } from "../../render/context.js";
 import { IAnimatable, Animatable } from "../../scene/animation.js";
 import { ISceneObjectWithPositionalData, ISceneObjectWithSizeData, ISceneContainerObject, SceneObjectInfo, ISceneObjectType, objects, ISceneObjectWithRotationData } from "../../scene/object.js";
+import { AnimatableObjectProperty } from "../../scene/property.js";
 
 export class Container implements ISceneObjectWithPositionalData, ISceneObjectWithSizeData, ISceneObjectWithRotationData, ISceneContainerObject {
     isContainer: true = true;
@@ -17,11 +18,11 @@ export class Container implements ISceneObjectWithPositionalData, ISceneObjectWi
     children: SceneObjectInfo[] = [];
 
     properties = [
-        this.x,
-        this.y,
-        this.width,
-        this.height,
-        this.rotation
+        new AnimatableObjectProperty(this.x),
+        new AnimatableObjectProperty(this.y),
+        new AnimatableObjectProperty(this.width),
+        new AnimatableObjectProperty(this.height),
+        new AnimatableObjectProperty(this.rotation),
     ];
 
     render(context: RenderContext): void {

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Easing, IAnimatable, IObjectContainer, IObjectProperty, ISceneContainerObject, Keyframe, Scene, SceneObjectInfo } from "@nahara/motion";
+    import { AnimatableObjectProperty, type Easing, type IAnimatable, type IObjectContainer, type ISceneContainerObject, type Keyframe, type SceneObjectInfo } from "@nahara/motion";
     import Button from "../input/Button.svelte";
     import { createEventDispatcher } from "svelte";
     import { snapping } from "../../snapping";
@@ -14,12 +14,12 @@
     export let selectStateQuery: (object: SceneObjectInfo) => "primary" | "secondary" | "none";
 
     let expanded = false;
-    let animatedProperties: IAnimatable<any>[] = [];
+    let animatedProperties: AnimatableObjectProperty<any>[] = [];
     let childrenObjs: IObjectContainer | undefined = undefined;
 
-    $: animatedProperties = (object.object.properties
-        .filter(o => !(o as IObjectProperty<any>).isSimple) as IAnimatable<any>[])
-        .filter(p => p.animated);
+    $: animatedProperties = object.object.properties
+        .filter(o => o instanceof AnimatableObjectProperty)
+        .filter(o => o.animatable.animated);
     $: childrenObjs = (object.object as ISceneContainerObject).isContainer
         ? (object.object as ISceneContainerObject)
         : undefined;
@@ -220,17 +220,17 @@
                 <div class="track">
                     <div class="left" style:width="{labelWidth - 24}px">
                         <div class="label">{prop.translationKey}</div>
-                        <Button label="Clear" on:click={() => { prop.clear(); dispatcher("update", object) }} />
+                        <Button label="Clear" on:click={() => { prop.animatable.clear(); dispatcher("update", object) }} />
                     </div>
                     <div class="timeline">
-                        {#each prop as keyframe}
+                        {#each prop.animatable as keyframe}
                             <div
                                 class="keyframe {typeof keyframe.easing == 'string' ? keyframe.easing : 'custom'}"
                                 role="button"
                                 tabindex="0"
                                 style:left="{(keyframe.time - scroll) * zoom / 1000}px"
-                                on:contextmenu={e => handleKeyframeContextMenu(e, prop, keyframe)}
-                                on:mousedown={e => handleKeyframeDragStart(e, prop, keyframe)}
+                                on:contextmenu={e => handleKeyframeContextMenu(e, prop.animatable, keyframe)}
+                                on:mousedown={e => handleKeyframeDragStart(e, prop.animatable, keyframe)}
                             ></div>
                         {/each}
                     </div>
