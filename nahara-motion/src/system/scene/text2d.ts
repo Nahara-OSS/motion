@@ -37,7 +37,7 @@ export class Text2D implements ISceneObjectWithPositionalData {
         const size = this.size.get(context.time);
         const color = this.color.get(context.time);
         context.canvas.font = `${size}px ${this.font}`;
-        context.canvas.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a ?? 255})`;
+        context.canvas.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${(color.a ?? 255) / 255})`;
         context.canvas.save();
         context.canvas.translate(x, y);
         context.canvas.scale(scaleX, scaleY);

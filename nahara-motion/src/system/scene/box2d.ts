@@ -32,7 +32,7 @@ export class Box2D implements ISceneObjectWithPositionalData, ISceneObjectWithSi
         const height = this.height.get(context.time);
         const rotation = this.rotation.get(context.time);
         const color = this.color.get(context.time);
-        context.canvas.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a ?? 255})`;
+        context.canvas.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${(color.a ?? 255) / 255})`;
 
         context.canvas.translate(x + width / 2, y + height / 2);
         context.canvas.rotate(rotation * Math.PI / 180);
