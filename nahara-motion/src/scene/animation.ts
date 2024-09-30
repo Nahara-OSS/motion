@@ -236,6 +236,7 @@ export class Animatable<T> implements IAnimatable<T> {
             modification.easing ?? kf.easing
         ];
 
+        if (modification.time != null) this.keyframes.sort((a, b) => a.time - b.time);
         return kf;
     }
 
