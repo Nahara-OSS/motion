@@ -4,7 +4,7 @@
     import { AnimatableObjectProperty, type IAnimatable, type Vec2 } from "@nahara/motion";
 
     let labelWidth = 200;
-    let verticalZoom = 1; // 1 unit per pixel
+    let verticalZoom = 20; // 1 unit per pixel
     let verticalScroll = 0; // 0 at vertical center of graph
     let horizontalZoom = 100;
     let horizontalScroll = 0;
@@ -50,8 +50,9 @@
         ctx.scale(devicePixelRatio, devicePixelRatio);
 
         if (selectedProperty && typeof selectedProperty.animatable.defaultValue == "number") {
+            // Render line
             let firstPoint = false;
-            let lastX = 0;
+            let lastX = -horizontalScroll * horizontalZoom / 1000;
             let lastY = canvas.offsetHeight / 2 - selectedProperty.animatable.defaultValue / verticalZoom;
             ctx.lineWidth = 1;
             ctx.strokeStyle = "black";
@@ -78,33 +79,25 @@
                             ctx.lineTo(x, y);
                             break;
                         case "ease-in":
-                            cubicBezierLine(
-                                ctx,
-                                { x: 0.42, y: 0 },
-                                { x: 0, y: 0 },
-                                { x: lastX, y: lastY }, { x, y }
-                            );
+                            cubicBezierLine(ctx, { x: 0.42, y: 0 }, { x: 0, y: 0 }, { x: lastX, y: lastY }, { x, y });
                             break;
                         case "ease-out":
-                            cubicBezierLine(
-                                ctx,
-                                { x: 0, y: 0 },
-                                { x: -0.42, y: 0 },
-                                { x: lastX, y: lastY }, { x, y }
-                            );
+                            cubicBezierLine(ctx, { x: 0, y: 0 }, { x: -0.42, y: 0 }, { x: lastX, y: lastY }, { x, y });
                             break;
                         case "ease-in-out":
-                            cubicBezierLine(
-                                ctx,
-                                { x: 0.42, y: 0 },
-                                { x: -0.42, y: 0 },
-                                { x: lastX, y: lastY }, { x, y }
-                            );
+                            cubicBezierLine(ctx, { x: 0.42, y: 0 }, { x: -0.42, y: 0 }, { x: lastX, y: lastY }, { x, y });
                             break;
                         default: ctx.lineTo(x, y); break;
                     }
-                } else {
-                    ctx.lineTo(x, y); // TODO
+                } else if (keyframe.easing.type == "bezier") {
+                    // TODO also render drag handles
+                    cubicBezierLine(
+                        ctx,
+                        keyframe.easing.startControlPoint,
+                        keyframe.easing.endControlPoint,
+                        { x: lastX, y: lastY },
+                        { x, y }
+                    );
                 }
 
                 lastX = x;
@@ -114,6 +107,73 @@
             ctx.lineTo(canvas.offsetWidth, lastY);
             ctx.stroke();
             ctx.closePath();
+            
+            // Render draggable handles
+            lastX = -horizontalScroll * horizontalZoom / 1000;
+            lastY = canvas.offsetHeight / 2 - selectedProperty.animatable.defaultValue / verticalZoom;
+
+            for (const keyframe of selectedProperty.animatable) {
+                const x = (keyframe.time - horizontalScroll) * horizontalZoom / 1000;
+                const y = canvas.offsetHeight / 2 - (typeof keyframe.value == "number" ? keyframe.value / verticalZoom : 0);
+
+                if (typeof keyframe.easing != "string" && keyframe.easing.type == "bezier") {
+                    const { startControlPoint, endControlPoint } = keyframe.easing;
+                    const curveWidth = x - lastX;
+                    const curveHeight = y - lastY;
+                    const cp1Dist = Math.sqrt((startControlPoint.x * curveWidth)**2 + (startControlPoint.y * curveHeight)**2);
+
+                    ctx.strokeStyle = "#d1d1d1";
+                    ctx.lineWidth = 1;
+
+                    ctx.beginPath();
+                    ctx.moveTo(lastX + startControlPoint.x * curveWidth * 5 / cp1Dist, lastY + startControlPoint.y * curveHeight * 5 / cp1Dist);
+                    ctx.lineTo(lastX + startControlPoint.x * curveWidth, lastY + startControlPoint.y * curveHeight);
+                    ctx.stroke();
+                    ctx.closePath();
+
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + endControlPoint.x * curveWidth, y + endControlPoint.y * curveHeight);
+                    ctx.stroke();
+                    ctx.closePath();
+
+                    ctx.fillStyle = "#fff";
+                    ctx.lineWidth = 2;
+
+                    ctx.beginPath();
+                    ctx.arc(lastX + startControlPoint.x * curveWidth, lastY + startControlPoint.y * curveHeight, 5, 0, Math.PI * 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.arc(x + endControlPoint.x * curveWidth, y + endControlPoint.y * curveHeight, 5, 0, Math.PI * 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                ctx.strokeStyle = "#7f7f7f";
+                ctx.fillStyle = "#fff";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                lastX = x;
+                lastY = y;
+            }
+
+            // Render seek pointer
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "#ff5f5f";
+            const seekX = ($seekhead.position - horizontalScroll) * horizontalZoom / 1000;
+            ctx.beginPath();
+            ctx.moveTo(seekX, 0);
+            ctx.lineTo(seekX, canvas.offsetHeight);
+            ctx.stroke();
         }
     }
 </script>
