@@ -102,7 +102,12 @@
                     ["hold", "Hold", "easing.hold"],
                     ["ease-in", "Ease in", "easing.in"],
                     ["ease-out", "Ease out", "easing.out"],
-                    ["ease-in-out", "Ease in out", "easing.inout"]
+                    ["ease-in-out", "Ease in out", "easing.inout"],
+                    [
+                        { type: "bezier", startControlPoint: { x: 0.5, y: -0.2 }, endControlPoint: { x: -0.5, y: 0.2 } },
+                        "Bezier curve",
+                        "easing.bezier"
+                    ]
                 ] as [Easing, string, string][]).map(s => ({
                     type: "simple",
                     name: s[1],
