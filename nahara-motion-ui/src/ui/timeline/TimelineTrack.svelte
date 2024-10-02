@@ -189,7 +189,7 @@
                 role="button"
                 tabindex="0"
                 class="label"
-                on:click={() => { expanded = !expanded; dispatcher("select", object); }}
+                on:click={() => dispatcher("select", object)}
             >{object.name}</div>
         </div>
         <div class="timeline">
@@ -221,6 +221,9 @@
     </div>
     {#if expanded}
         <div class="children-tracks">
+            <div class="section">
+                <div class="label">{animatedProperties.length} animated {animatedProperties.length == 1 ? "property" : "properties"}</div>
+            </div>
             {#each animatedProperties as prop}
                 <div class="track">
                     <div class="left" style:width="{labelWidth - 24}px">
@@ -242,6 +245,9 @@
                 </div>
             {/each}
             {#if childrenObjs}
+                <div class="section">
+                    <div class="label">{childrenObjs.objectsCount} children</div>
+                </div>
                 {#each childrenObjs as childObj}
                     <svelte:self
                         object={childObj}
@@ -352,25 +358,34 @@
             position: relative;
             width: 24px;
             height: 24px;
+            cursor: pointer;
+
+            &:hover, &:active {
+                background-color: #0000000f;
+            }
 
             &::before {
                 content: '';
                 position: absolute;
                 top: 50%;
                 left: 50%;
-                translate: -4px -4px;
+                translate: -6px -4px;
                 border: 4px solid transparent;
                 border-top: 4px solid #7d7d7d;
                 border-left: 4px solid #7f7f7f;
                 rotate: 135deg;
             }
 
-            &.expanded::before { rotate: 180deg; }
+            &.expanded::before { rotate: 180deg; translate: -4px -4px; }
         }
 
         .label {
             flex: 1 1 auto;
             padding: 5px 8px;
+
+            &:hover, &:active {
+                background-color: #0000000f;
+            }
         }
     }
 
@@ -391,7 +406,15 @@
     .children-tracks {
         margin-left: 24px;
 
-        > .track, > :global(.object) {
+        .section {
+            color: #7f7f7f;
+
+            .label {
+                padding: 5px 8px;
+            }
+        }
+
+        > .track, > :global(.object), > .section {
             position: relative;
 
             &::before, &::after {
@@ -422,12 +445,12 @@
     
     .object {
         &:hover, &.select-state-primary, &.select-state-secondary {
-            background-color: #0000000f;
+            background-color: #00000007;
         }
 
         &:hover {
             .children-tracks {
-                > .track, > :global(.object) {
+                > .track, > :global(.object), > .section {
                     &::before, &::after {
                         background-color: #1d1d1d;
                     }
