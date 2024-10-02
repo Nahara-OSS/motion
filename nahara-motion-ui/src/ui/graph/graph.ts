@@ -362,7 +362,9 @@ export namespace graph {
             if (!clickedKeyframe) {
                 const time = mx * 1000 / state.horizontalZoom + state.horizontalScroll;
                 const yp = 0.5 - my / vh;
-                const value = state.verticalScroll + yp * (verticalZoom * vh);
+                const value = typeof state.property.defaultValue == "number"
+                    ? state.verticalScroll + yp * (verticalZoom * vh)
+                    : state.property.get(time);
                 state.adjustingKeyframe = state.property.set(time, value);
                 state.adjustHandleType = "self";
                 state.keyframeInitialTime = time;
