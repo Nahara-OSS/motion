@@ -1,9 +1,11 @@
 <script lang="ts">
     import { onMount } from "svelte";
     import { app } from "../../appglobal";
-    import { AnimatableObjectProperty } from "@nahara/motion";
+    import { AnimatableObjectProperty, type Easing } from "@nahara/motion";
     import { graph } from "./graph";
     import { snapping } from "../../snapping";
+    import type { DropdownEntry } from "../menu/FancyMenu";
+    import { openMenuAt } from "../menu/MenuHost.svelte";
 
     let labelWidth = 200;
     let verticalZoom: number | "auto" = "auto";
@@ -73,6 +75,7 @@
     }
 
     function handleMouseDown(e: MouseEvent) {
+        if (e.button != 0) return;
         graph.handleMouseDown(state, ...eventToCanvasXy(e), canvas.offsetWidth, canvas.offsetHeight);
         renderTimeline();
     }
@@ -113,6 +116,67 @@
     function handleSeekheadMouseUp(e: MouseEvent) {
         draggingSeekhead = false;
     }
+
+    function handleContextMenu(e: MouseEvent) {
+        e.preventDefault();
+
+        const contextMenuData = graph.handleContextMenu(
+            state, ...eventToCanvasXy(e),
+            canvas.offsetWidth, canvas.offsetHeight
+        );
+        const menu: DropdownEntry[] = [];
+
+        if (contextMenuData.property && contextMenuData.keyframe) {
+            menu.push({
+                type: "tree",
+                name: "Easing",
+                children: ([
+                    ["linear", "Linear", "easing.linear"],
+                    ["hold", "Hold", "easing.hold"],
+                    ["ease-in", "Ease in", "easing.in"],
+                    ["ease-out", "Ease out", "easing.out"],
+                    ["ease-in-out", "Ease in out", "easing.inout"],
+                    [
+                        { type: "bezier", startControlPoint: { x: 0.5, y: -0.2 }, endControlPoint: { x: -0.5, y: 0.2 } },
+                        "Bezier curve",
+                        "easing.bezier"
+                    ]
+                ] as [Easing, string, string][]).map(s => ({
+                    type: "simple",
+                    name: s[1],
+                    icon: s[2],
+                    click() {
+                        contextMenuData.property!.modify(contextMenuData.keyframe!, { easing: s[0] });
+                        currentScene.update(a => a);
+                    },
+                }))
+            }, {
+                type: "simple",
+                name: "Seek to this",
+                click: () => app.updateSeekhead({ ...$seekhead, position: contextMenuData.keyframe!.time })
+            }, {
+                type: "simple",
+                name: "Delete keyframe",
+                click() {
+                    contextMenuData.property!.delete(contextMenuData.keyframe!);
+                    currentScene.update(a => a);
+                }
+            });
+        }
+
+        if (contextMenuData.property) {
+            menu.push({
+                type: "simple",
+                name: "Clear all keyframes",
+                click() {
+                    contextMenuData.property!.clear();
+                    currentScene.update(a => a);
+                }
+            });
+        }
+
+        if (menu.length > 0) openMenuAt(e.clientX, e.clientY, menu);
+    }
 </script>
 
 <svelte:body
@@ -146,11 +210,12 @@
                 class="seekhead"
                 style:left="{($seekhead.position - horizontalScroll) * horizontalZoom / 1000}px"
                 on:mousedown={handleSeekheadMouseDown}
-            ></div>
-        </div>
+                ></div>
+            </div>
         <canvas
             bind:this={canvas}
             on:mousedown={handleMouseDown}
+            on:contextmenu={handleContextMenu}
             on:wheel={handleWheel}
         ></canvas>
     </div>

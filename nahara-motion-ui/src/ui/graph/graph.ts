@@ -1,5 +1,6 @@
 import type { BezierEasing, Color, IAnimatable, Keyframe, Vec2 } from "@nahara/motion";
 import { snapping } from "../../snapping";
+import type { DropdownEntry } from "../menu/FancyMenu";
 
 export namespace graph {
     /**
@@ -299,6 +300,31 @@ export namespace graph {
             ctx.fill();
             ctx.stroke();
         }
+    }
+
+    export function handleContextMenu(state: State, mx: number, my: number, vw: number, vh: number): {
+        property?: IAnimatable<any>,
+        keyframe?: Keyframe<any>
+    } {
+        if (state.property) {
+            let clickedKeyframe: Keyframe<any> | undefined = undefined;
+
+            forEachKeyframeInGraph(state, vw, vh, (x, y, keyframe) => {
+                const scalarHandle = typeof keyframe.value == "number" && (mx - x) ** 2 + (my - y) ** 2 <= 5 ** 2;
+                const colorHandle = typeof keyframe.value == "object" && "model" in keyframe.value
+                    && mx >= x - 10 && my >= y - 10 && mx < x + 10 && my < y + 10;
+
+                if (scalarHandle || colorHandle) {
+                    clickedKeyframe = keyframe;
+                    return "break";
+                }
+            });
+
+            if (clickedKeyframe) return { property: state.property, keyframe: clickedKeyframe };
+            return { property: state.property };
+        }
+
+        return {};
     }
 
     export function handleMouseDown(state: State, mx: number, my: number, vw: number, vh: number) {
