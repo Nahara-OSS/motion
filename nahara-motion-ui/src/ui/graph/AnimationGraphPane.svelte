@@ -177,6 +177,7 @@
             .seekbar {
                 position: relative;
                 height: 24px;
+                overflow: hidden;
 
                 .seekhead {
                     position: absolute;

@@ -339,8 +339,9 @@ export namespace graph {
                         state.keyframeInitialCp = { ...keyframe.easing.endControlPoint };
                         return "break";
                     }
-                }
 
+                }
+                
                 const draggingScalarHandle = typeof keyframe.value == "number" && (mx - x) ** 2 + (my - y) ** 2 <= 5 ** 2;
                 const draggingColorHandle = typeof keyframe.value == "object" && "model" in keyframe.value
                     && mx >= x - 10 && my >= y - 10 && mx < x + 10 && my < y + 10;
@@ -353,6 +354,9 @@ export namespace graph {
                     state.keyframeInitialValue = keyframe.value;
                     return "break";
                 }
+
+                lastX = x;
+                lastY = y;
             });
 
             if (!clickedKeyframe) {
