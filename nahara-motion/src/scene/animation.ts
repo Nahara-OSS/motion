@@ -205,7 +205,9 @@ export class Animatable<T> implements IAnimatable<T> {
             return this.keyframes[idx];
         }
 
-        return this.insert(time, value);
+        const insertAt = -idx - 1;
+        const easing = structuredClone(this.keyframes[insertAt - 1]?.easing ?? "linear");
+        return this.insert(time, value, easing);
     }
 
     insert(time: number, value: T, easing?: Easing): Keyframe<T> {
