@@ -31,6 +31,11 @@ jobs:
         run: |
           pnpm install
           pnpm build
+      - name: Build Nahara's Motion Video
+        working-directory: nahara-motion-video
+        run: |
+          pnpm install
+          pnpm build
       - name: Build Nahara's Motion UI
         working-directory: nahara-motion-ui
         run: |
