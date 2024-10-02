@@ -231,7 +231,7 @@ export namespace graph {
     ) {
         if (typeof keyframe.value == "number") {
             ctx.strokeStyle = selected ? "#1d1d1d" : "#7f7f7f";
-            ctx.fillStyle = selected ? "#1d1d1d" : "#fff";
+            ctx.fillStyle = selected ? "#1d1d1d1f" : "#ffffffaf";
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.arc(x, y, 5, 0, Math.PI * 2);
@@ -241,7 +241,6 @@ export namespace graph {
         } else if ("model" in keyframe.value) {
             // Color
             const color = keyframe.value as Color;
-            const prevColor = lastKeyframe.value as Color;
 
             if ((x - lastX) > 22) {
                 const gradient = ctx.createLinearGradient(lastX + 11, y, x - 11, y);
@@ -268,6 +267,7 @@ export namespace graph {
             const curveWidth = x - lastX;
             const curveHeight = (typeof keyframe.value != "number" && "model" in keyframe.value) ? 100 : y - lastY;
             const cp1Dist = Math.sqrt((startControlPoint.x * curveWidth)**2 + (startControlPoint.y * curveHeight)**2);
+            const cp2Dist = Math.sqrt((endControlPoint.x * curveWidth)**2 + (endControlPoint.y * curveHeight)**2);
 
             ctx.strokeStyle = "#d1d1d1";
             ctx.lineWidth = 1;
@@ -280,12 +280,12 @@ export namespace graph {
             ctx.closePath();
 
             ctx.beginPath();
-            ctx.moveTo(x, y);
+            ctx.moveTo(x + endControlPoint.x * curveWidth * 5 / cp2Dist, y + endControlPoint.y * curveHeight * 5 / cp2Dist);
             ctx.lineTo(x + endControlPoint.x * curveWidth, y + endControlPoint.y * curveHeight);
             ctx.stroke();
             ctx.closePath();
 
-            ctx.fillStyle = "#fff";
+            ctx.fillStyle = "#ffffff7f";
             ctx.lineWidth = 2;
 
             ctx.beginPath();
