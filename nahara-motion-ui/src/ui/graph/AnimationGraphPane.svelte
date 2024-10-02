@@ -3,6 +3,7 @@
     import { app } from "../../appglobal";
     import { AnimatableObjectProperty } from "@nahara/motion";
     import { graph } from "./graph";
+    import { snapping } from "../../snapping";
 
     let labelWidth = 200;
     let verticalZoom: number | "auto" = "auto";
@@ -56,7 +57,6 @@
         ctx.reset();
         ctx.scale(devicePixelRatio, devicePixelRatio);
 
-        graph.renderGraph(state, ctx, canvas.offsetWidth, canvas.offsetHeight);
         ctx.lineWidth = 2;
         ctx.strokeStyle = "#ff5f5f";
         const seekX = ($seekhead.position - horizontalScroll) * horizontalZoom / 1000;
@@ -64,6 +64,7 @@
         ctx.moveTo(seekX, 0);
         ctx.lineTo(seekX, canvas.offsetHeight);
         ctx.stroke();
+        graph.renderGraph(state, ctx, canvas.offsetWidth, canvas.offsetHeight);
     }
 
     function eventToCanvasXy(e: MouseEvent): [number, number] {
@@ -91,11 +92,34 @@
         if (typeof verticalZoom == "number") verticalScroll -= e.deltaY * verticalZoom;
         renderTimeline();
     }
+
+    let draggingSeekhead = false;
+    let eventEx = 0, eventEy = 0;
+    let initialSeekPosition = 0;
+
+    function handleSeekheadMouseDown(e: MouseEvent) {
+        draggingSeekhead = true;
+        eventEx = e.clientX;
+        eventEy = e.clientY;
+        initialSeekPosition = $seekhead.position;
+    }
+
+    function handleSeekheadMouseMove(e: MouseEvent) {
+        if (!draggingSeekhead) return;
+        const time = Math.max(initialSeekPosition + (e.clientX - eventEx) * 1000 / horizontalZoom, 0);
+        app.updateSeekhead({ ...$seekhead, position: snapping.snapTimeline(time) });
+    }
+
+    function handleSeekheadMouseUp(e: MouseEvent) {
+        draggingSeekhead = false;
+    }
 </script>
 
 <svelte:body
     on:mousemove={handleMouseMove}
+    on:mousemove={handleSeekheadMouseMove}
     on:mouseup={handleMouseUp}
+    on:mouseup={handleSeekheadMouseUp}
 />
 
 <div class="graph-pane">
@@ -115,12 +139,21 @@
             {/each}
         {/if}
     </div>
-    <canvas
-        bind:this={canvas}
-        style:width="calc(100% - {labelWidth}px)"
-        on:mousedown={handleMouseDown}
-        on:wheel={handleWheel}
-    ></canvas>
+    <div class="seekbar-and-graph">
+        <div class="seekbar">
+            <!-- svelte-ignore a11y-no-static-element-interactions -->
+            <div
+                class="seekhead"
+                style:left="{($seekhead.position - horizontalScroll) * horizontalZoom / 1000}px"
+                on:mousedown={handleSeekheadMouseDown}
+            ></div>
+        </div>
+        <canvas
+            bind:this={canvas}
+            on:mousedown={handleMouseDown}
+            on:wheel={handleWheel}
+        ></canvas>
+    </div>
 </div>
 
 <style lang="scss">
@@ -129,12 +162,61 @@
         flex-direction: row;
         height: 100%;
 
-        .properties-list, canvas {
+        .properties-list, .seekbar-and-graph {
             height: 100%;
         }
 
-        canvas {
+        .seekbar-and-graph {
+            flex: 1 1 auto;
             overscroll-behavior: none;
+
+            .seekbar, canvas {
+                width: 100%;
+            }
+
+            .seekbar {
+                position: relative;
+                height: 24px;
+
+                .seekhead {
+                    position: absolute;
+                    cursor: ew-resize;
+                    top: 0;
+                    width: 16px;
+                    height: 17px;
+                    translate: -50% 0;
+                    background-color: #ffafaf;
+                    border: 1px solid #ff5c5c;
+
+                    &::after {
+                        content: '';
+                        position: absolute;
+                        left: 50%;
+                        top: 11px;
+                        translate: -50% 0;
+                        width: 12px;
+                        height: 12px;
+                        background-color: #ffafaf;
+                        border: 1px solid #ff5c5c;
+                        rotate: 45deg;
+                        border-top: unset;
+                        border-left: unset;
+                    }
+
+                    &:hover, &:active {
+                        background-color: #ff5c5c;
+
+                        &::after {
+                            background-color: #ff5c5c;
+                        }
+                    }
+                }
+            }
+
+            canvas {
+                display: block;
+                height: calc(100% - 24px);
+            }
         }
     }
 
