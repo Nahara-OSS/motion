@@ -1,4 +1,5 @@
-import type { Color, IAnimatable, Keyframe, Vec2 } from "@nahara/motion";
+import type { BezierEasing, Color, IAnimatable, Keyframe, Vec2 } from "@nahara/motion";
+import { snapping } from "../../snapping";
 
 export namespace graph {
     /**
@@ -36,6 +37,14 @@ export namespace graph {
          */
         adjustHandleType: "self" | "cp1" | "cp2";
 
+        eventDownX?: number;
+        eventDownY?: number;
+        keyframeInitialTime?: number;
+        keyframeInitialValue?: number;
+        keyframeInitialCp?: Vec2;
+        keyframeCurveAreaWidth?: number;
+        keyframeCurveAreaHeight?: number;
+
         /**
          * Vertical zoom (a.k.a value axis zoom) in units/px. If the zoom is `auto`, it will fits the values of all
          * keyframes that are visible in the graph.
@@ -56,15 +65,15 @@ export namespace graph {
         if (state.verticalZoom == "auto") {
             if (!state.property) return 1;
 
-            const startTime = -state.horizontalScroll;
-            const endTime = -state.horizontalScroll + width * 1000 / state.horizontalZoom;
+            const startTime = state.horizontalScroll;
+            const endTime = state.horizontalScroll + width * 1000 / state.horizontalZoom;
             const start = state.property.get(startTime);
             const end = state.property.get(endTime);
             if (typeof start != "number" || typeof end != "number") return 1;
             let lastValue = start;
 
-            let max = Math.min(start, end);
-            let min = Math.max(start, end);
+            let max = Math.max(start, end);
+            let min = Math.min(start, end);
             const visibleKeyframes: Iterable<Keyframe<any>> = state.property; // TODO
 
             for (const keyframe of visibleKeyframes) {
@@ -94,11 +103,11 @@ export namespace graph {
         state: State,
         width: number,
         height: number,
-        callback: (x: number, y: number, kf: Keyframe<any>) => any
+        callback: (x: number, y: number, kf: Keyframe<any>) => void | "break"
     ) {
         if (state.property) {
-            const startTime = -state.horizontalScroll;
-            const endTime = -state.horizontalScroll + width * 1000 / state.horizontalZoom;
+            const startTime = state.horizontalScroll;
+            const endTime = state.horizontalScroll + width * 1000 / state.horizontalZoom;
             const verticalZoom = calculateVerticalZoom(state, width, height);
 
             let emitting = false;
@@ -115,7 +124,7 @@ export namespace graph {
                         if (lastKeyframe) {
                             const lastX = (lastKeyframe!.time - state.horizontalScroll) * state.horizontalZoom / 1000;
                             const lastY = positionYOf(lastKeyframe!.value, height, state.verticalScroll, verticalZoom);
-                            callback(lastX, lastY, lastKeyframe!);
+                            if (callback(lastX, lastY, lastKeyframe!) == "break") break;
                         }
                     }
                 }
@@ -123,7 +132,7 @@ export namespace graph {
                 lastKeyframe = keyframe;
                 const x = (keyframe.time - state.horizontalScroll) * state.horizontalZoom / 1000;
                 const y = positionYOf(keyframe.value, height, state.verticalScroll, verticalZoom);
-                callback(x, y, keyframe);
+                if (callback(x, y, keyframe) == "break") break;
 
                 if (keyframe.time >= endTime) break;
             }
@@ -151,10 +160,11 @@ export namespace graph {
     ) {
         if (state.property) {
             const verticalZoom = calculateVerticalZoom(state, width, height);
+            const startTime = state.horizontalScroll;
 
             let firstPoint = false;
             let lastX = -state.horizontalScroll * state.horizontalZoom / 1000;
-            let lastY = positionYOf(state.property.defaultValue, height, state.verticalScroll, verticalZoom);
+            let lastY = positionYOf(state.property.get(startTime), height, state.verticalScroll, verticalZoom);
 
             ctx.lineWidth = 1;
             ctx.strokeStyle = "#000";
@@ -203,7 +213,7 @@ export namespace graph {
             let lastKeyframe: Keyframe<any> = { time: 0, easing: "hold", value: state.property.defaultValue, uid: "0" };
 
             forEachKeyframeInGraph(state, width, height, (x, y, keyframe) => {
-                renderKeyframeHandlesAt(x, y, lastX, lastY, keyframe, lastKeyframe, ctx);
+                renderKeyframeHandlesAt(x, y, lastX, lastY, keyframe, lastKeyframe, state.property!, state.adjustingKeyframe == keyframe, ctx);
                 lastX = x;
                 lastY = y;
                 lastKeyframe = keyframe;
@@ -214,48 +224,12 @@ export namespace graph {
     function renderKeyframeHandlesAt(
         x: number, y: number, lastX: number, lastY: number,
         keyframe: Keyframe<any>, lastKeyframe: Keyframe<any>,
+        property: IAnimatable<any>, selected: boolean,
         ctx: CanvasRenderingContext2D
     ) {
         if (typeof keyframe.value == "number") {
-            if (typeof keyframe.easing != "string" && keyframe.easing.type == "bezier") {
-                const { startControlPoint, endControlPoint } = keyframe.easing;
-                const curveWidth = x - lastX;
-                const curveHeight = y - lastY;
-                const cp1Dist = Math.sqrt((startControlPoint.x * curveWidth)**2 + (startControlPoint.y * curveHeight)**2);
-
-                ctx.strokeStyle = "#d1d1d1";
-                ctx.lineWidth = 1;
-
-                ctx.beginPath();
-                ctx.moveTo(lastX + startControlPoint.x * curveWidth * 5 / cp1Dist, lastY + startControlPoint.y * curveHeight * 5 / cp1Dist);
-                ctx.lineTo(lastX + startControlPoint.x * curveWidth, lastY + startControlPoint.y * curveHeight);
-                ctx.stroke();
-                ctx.closePath();
-
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-                ctx.lineTo(x + endControlPoint.x * curveWidth, y + endControlPoint.y * curveHeight);
-                ctx.stroke();
-                ctx.closePath();
-
-                ctx.fillStyle = "#fff";
-                ctx.lineWidth = 2;
-
-                ctx.beginPath();
-                ctx.arc(lastX + startControlPoint.x * curveWidth, lastY + startControlPoint.y * curveHeight, 5, 0, Math.PI * 2);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.arc(x + endControlPoint.x * curveWidth, y + endControlPoint.y * curveHeight, 5, 0, Math.PI * 2);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-            }
-
-            ctx.strokeStyle = "#7f7f7f";
-            ctx.fillStyle = "#fff";
+            ctx.strokeStyle = selected ? "#1d1d1d" : "#7f7f7f";
+            ctx.fillStyle = selected ? "#1d1d1d" : "#fff";
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.arc(x, y, 5, 0, Math.PI * 2);
@@ -269,8 +243,12 @@ export namespace graph {
 
             if ((x - lastX) > 22) {
                 const gradient = ctx.createLinearGradient(lastX + 11, y, x - 11, y);
-                gradient.addColorStop(0, `rgba(${prevColor.r}, ${prevColor.g}, ${prevColor.b}, ${(prevColor.a ?? 255) / 255})`);
-                gradient.addColorStop(1, `rgba(${color.r}, ${color.g}, ${color.b}, ${(color.a ?? 255) / 255})`);
+
+                for (let i = 0; i <= 1; i += 0.1) {
+                    const col: Color = property.get(lastKeyframe.time + (keyframe.time - lastKeyframe.time) * i);
+                    gradient.addColorStop(i, `rgba(${col.r}, ${col.g}, ${col.b}, ${(col.a ?? 255) / 255})`);
+                }
+
                 ctx.fillStyle = gradient;
                 ctx.fillRect(lastX + 11, y - 10, x - lastX - 22, 20);
             }
@@ -282,8 +260,156 @@ export namespace graph {
             ctx.strokeStyle = "#fff"; ctx.strokeRect(x - 10, y - 10, 20, 20);
             ctx.strokeStyle = "#000"; ctx.strokeRect(x - 11, y - 11, 22, 22);
         }
+
+        if (typeof keyframe.easing != "string" && keyframe.easing.type == "bezier") {
+            const { startControlPoint, endControlPoint } = keyframe.easing;
+            const curveWidth = x - lastX;
+            const curveHeight = (typeof keyframe.value != "number" && "model" in keyframe.value) ? 100 : y - lastY;
+            const cp1Dist = Math.sqrt((startControlPoint.x * curveWidth)**2 + (startControlPoint.y * curveHeight)**2);
+
+            ctx.strokeStyle = "#d1d1d1";
+            ctx.lineWidth = 1;
+
+            ctx.beginPath();
+            if (typeof keyframe.value != "number" && "model" in keyframe.value) ctx.moveTo(lastX, lastY);
+            else ctx.moveTo(lastX + startControlPoint.x * curveWidth * 5 / cp1Dist, lastY + startControlPoint.y * curveHeight * 5 / cp1Dist);
+            ctx.lineTo(lastX + startControlPoint.x * curveWidth, lastY + startControlPoint.y * curveHeight);
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + endControlPoint.x * curveWidth, y + endControlPoint.y * curveHeight);
+            ctx.stroke();
+            ctx.closePath();
+
+            ctx.fillStyle = "#fff";
+            ctx.lineWidth = 2;
+
+            ctx.beginPath();
+            ctx.arc(lastX + startControlPoint.x * curveWidth, lastY + startControlPoint.y * curveHeight, 5, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(x + endControlPoint.x * curveWidth, y + endControlPoint.y * curveHeight, 5, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
     }
 
     export function handleMouseDown(state: State, mx: number, my: number, vw: number, vh: number) {
+        state.eventDownX = mx;
+        state.eventDownY = my;
+
+        if (state.property) {
+            const verticalZoom = calculateVerticalZoom(state, vw, vh);
+            let clickedKeyframe: Keyframe<any> | undefined = undefined;
+            let lastX = -state.horizontalScroll * state.horizontalZoom / 1000;
+            let lastY = positionYOf(state.property.defaultValue, vh, state.verticalScroll, verticalZoom);
+
+            forEachKeyframeInGraph(state, vw, vh, (x, y, keyframe) => {
+                if (typeof keyframe.easing != "string" && keyframe.easing.type == "bezier") {
+                    const curveWidth = x - lastX;
+                    const curveHeight = (typeof keyframe.value != "number" && "model" in keyframe.value) ? 100 : y - lastY;
+                    const { startControlPoint, endControlPoint } = keyframe.easing;
+                    const cp1Xy = [lastX + startControlPoint.x * curveWidth, lastY + startControlPoint.y * curveHeight];
+                    const cp2Xy = [x + endControlPoint.x * curveWidth, y + endControlPoint.y * curveHeight];
+
+                    // TODO deduplicate code
+                    state.keyframeCurveAreaWidth = curveWidth;
+                    state.keyframeCurveAreaHeight = curveHeight;
+
+                    if ((mx - cp1Xy[0]) ** 2 + (my - cp1Xy[1]) ** 2 <= 5 ** 2) {
+                        clickedKeyframe = keyframe;
+                        state.adjustingKeyframe = keyframe;
+                        state.adjustHandleType = "cp1";
+                        state.keyframeInitialTime = keyframe.time;
+                        state.keyframeInitialCp = { ...keyframe.easing.startControlPoint };
+                        return "break";
+                    }
+
+                    if ((mx - cp2Xy[0]) ** 2 + (my - cp2Xy[1]) ** 2 <= 5 ** 2) {
+                        clickedKeyframe = keyframe;
+                        state.adjustingKeyframe = keyframe;
+                        state.adjustHandleType = "cp2";
+                        state.keyframeInitialTime = keyframe.time;
+                        state.keyframeInitialCp = { ...keyframe.easing.endControlPoint };
+                        return "break";
+                    }
+                }
+
+                const draggingScalarHandle = typeof keyframe.value == "number" && (mx - x) ** 2 + (my - y) ** 2 <= 5 ** 2;
+                const draggingColorHandle = typeof keyframe.value == "object" && "model" in keyframe.value
+                    && mx >= x - 10 && my >= y - 10 && mx < x + 10 && my < y + 10;
+
+                if (draggingScalarHandle || draggingColorHandle) {
+                    clickedKeyframe = keyframe;
+                    state.adjustingKeyframe = keyframe;
+                    state.adjustHandleType = "self";
+                    state.keyframeInitialTime = keyframe.time;
+                    state.keyframeInitialValue = keyframe.value;
+                    return "break";
+                }
+            });
+
+            if (!clickedKeyframe) {
+                const time = mx * 1000 / state.horizontalZoom + state.horizontalScroll;
+                const yp = 0.5 - my / vh;
+                const value = state.verticalScroll + yp * (verticalZoom * vh);
+                state.adjustingKeyframe = state.property.set(time, value);
+                state.adjustHandleType = "self";
+                state.keyframeInitialTime = time;
+                state.keyframeInitialValue = value;
+            }
+        }
+    }
+
+    export function handleMouseMove(state: State, mx: number, my: number, vw: number, vh: number) {
+        const dx = mx - state.eventDownX!, dy = my - state.eventDownY!;
+
+        if (state.property && state.adjustingKeyframe) {
+            if (state.adjustHandleType == "self") {
+                let newTime = snapping.snapTimeline(state.keyframeInitialTime! + dx * 1000 / state.horizontalZoom);
+                newTime = Math.max(newTime, 0);
+
+                if (typeof state.adjustingKeyframe.value == "number") {
+                    state.adjustingKeyframe = state.property.modify(state.adjustingKeyframe, {
+                        time: newTime,
+                        value: state.keyframeInitialValue! - dy * calculateVerticalZoom(state, vw, vh)
+                    }) ?? undefined;
+                } else {
+                    state.adjustingKeyframe = state.property.modify(state.adjustingKeyframe, { time: newTime }) ?? undefined;
+                }
+            } else if (state.adjustHandleType == "cp1") {
+                state.adjustingKeyframe = state.property.modify(state.adjustingKeyframe, {
+                    easing: {
+                        type: "bezier",
+                        startControlPoint: {
+                            x: Math.min(Math.max(state.keyframeInitialCp!.x + dx / state.keyframeCurveAreaWidth!, 0), 1),
+                            y: state.keyframeInitialCp!.y + dy / state.keyframeCurveAreaHeight!
+                        },
+                        endControlPoint: (state.adjustingKeyframe.easing as BezierEasing).endControlPoint,
+                    }
+                }) ?? undefined;
+            } else if (state.adjustHandleType == "cp2") {
+                state.adjustingKeyframe = state.property.modify(state.adjustingKeyframe, {
+                    easing: {
+                        type: "bezier",
+                        startControlPoint: (state.adjustingKeyframe.easing as BezierEasing).startControlPoint,
+                        endControlPoint: {
+                            x: Math.min(Math.max(state.keyframeInitialCp!.x + dx / state.keyframeCurveAreaWidth!, -1), 0),
+                            y: state.keyframeInitialCp!.y + dy / state.keyframeCurveAreaHeight!
+                        },
+                    }
+                }) ?? undefined;
+            }
+        }
+    }
+
+    export function handleMouseUp(state: State, mx: number, my: number, vw: number, vh: number) {
+        state.adjustingKeyframe = undefined;
     }
 }

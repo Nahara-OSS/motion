@@ -65,7 +65,38 @@
         ctx.lineTo(seekX, canvas.offsetHeight);
         ctx.stroke();
     }
+
+    function eventToCanvasXy(e: MouseEvent): [number, number] {
+        const { left, top } = canvas.getBoundingClientRect();
+        return [e.clientX - left, e.clientY - top];
+    }
+
+    function handleMouseDown(e: MouseEvent) {
+        graph.handleMouseDown(state, ...eventToCanvasXy(e), canvas.offsetWidth, canvas.offsetHeight);
+        renderTimeline();
+    }
+
+    function handleMouseMove(e: MouseEvent) {
+        graph.handleMouseMove(state, ...eventToCanvasXy(e), canvas.offsetWidth, canvas.offsetHeight);
+        if (state.adjustingKeyframe) currentScene.update(a => a);
+    }
+
+    function handleMouseUp(e: MouseEvent) {
+        graph.handleMouseUp(state, ...eventToCanvasXy(e), canvas.offsetWidth, canvas.offsetHeight);
+        renderTimeline();
+    }
+
+    function handleWheel(e: WheelEvent) {
+        horizontalScroll = Math.max(horizontalScroll + e.deltaX * 1000 / horizontalZoom, 0);
+        if (typeof verticalZoom == "number") verticalScroll -= e.deltaY * verticalZoom;
+        renderTimeline();
+    }
 </script>
+
+<svelte:body
+    on:mousemove={handleMouseMove}
+    on:mouseup={handleMouseUp}
+/>
 
 <div class="graph-pane">
     <div class="properties-list" style:width="{labelWidth}px">
@@ -84,7 +115,12 @@
             {/each}
         {/if}
     </div>
-    <canvas bind:this={canvas} style:width="calc(100% - {labelWidth}px)"></canvas>
+    <canvas
+        bind:this={canvas}
+        style:width="calc(100% - {labelWidth}px)"
+        on:mousedown={handleMouseDown}
+        on:wheel={handleWheel}
+    ></canvas>
 </div>
 
 <style lang="scss">
@@ -95,6 +131,10 @@
 
         .properties-list, canvas {
             height: 100%;
+        }
+
+        canvas {
+            overscroll-behavior: none;
         }
     }
 
