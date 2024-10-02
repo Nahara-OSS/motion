@@ -1,3 +1,4 @@
 packages:
 - 'nahara-motion'
 - 'nahara-motion-ui'
+- 'nahara-motion-video'

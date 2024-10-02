@@ -20,6 +20,9 @@ importers:
       '@nahara/motion':
         specifier: workspace:*
         version: link:../nahara-motion
+      '@nahara/motion-video':
+        specifier: workspace:*
+        version: link:../nahara-motion-video
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^3.1.1
@@ -45,6 +48,19 @@ importers:
       vite:
         specifier: ^5.4.6
         version: 5.4.8(sass-embedded@1.78.0)
+
+  nahara-motion-video:
+    dependencies:
+      '@nahara/motion':
+        specifier: workspace:*
+        version: link:../nahara-motion
+      mp4-muxer:
+        specifier: ^5.1.3
+        version: 5.1.3
+    devDependencies:
+      typescript:
+        specifier: ^5.6.2
+        version: 5.6.2
 
 packages:
 
@@ -465,6 +481,10 @@ packages:
     resolution: {integrity: sha512-BV9NplVgLmSi4mwKzD8BD/NQ8erOY/nUE/GpgWe2ckx+wIQF5RyRirn/QsSSCPeulVpc3RA/iJt6DpfTIZps0Q==}
     dev: true
 
+  /@types/dom-webcodecs@0.1.11:
+    resolution: {integrity: sha512-yPEZ3z7EohrmOxbk/QTAa0yonMFkNkjnVXqbGb7D4rMr+F1dGQ8ZUFxXkyLLJuiICPejZ0AZE9Rrk9wUCczx4A==}
+    dev: false
+
   /@types/estree@1.0.5:
     resolution: {integrity: sha512-/kYRxGDLWzHOB7q+wtSUQlFrtcdUccpfy+X+9iMBpHK8QLLhx2wIPYuS5DYtR9Wa/YlZAbIovy7qVdB1Aq6Lyw==}
     dev: true
@@ -472,6 +492,10 @@ packages:
   /@types/pug@2.0.10:
     resolution: {integrity: sha512-Sk/uYFOBAB7mb74XcpizmH0KOR2Pv3D2Hmrh1Dmy5BmK3MpdSa5kqZcg6EKBdklU0bFXX9gCfzvpnyUehrPIuA==}
     dev: true
+
+  /@types/wicg-file-system-access@2020.9.8:
+    resolution: {integrity: sha512-ggMz8nOygG7d/stpH40WVaNvBwuyYLnrg5Mbyf6bmsj/8+gb6Ei4ZZ9/4PNpcPNTT8th9Q8sM8wYmWGjMWLX/A==}
+    dev: false
 
   /@types/wicg-file-system-access@2023.10.5:
     resolution: {integrity: sha512-e9kZO9kCdLqT2h9Tw38oGv9UNzBBWaR1MzuAavxPcsV/7FJ3tWbU6RI3uB+yKIDPGLkGVbplS52ub0AcRLvrhA==}
@@ -766,6 +790,13 @@ packages:
     dependencies:
       minimist: 1.2.8
     dev: true
+
+  /mp4-muxer@5.1.3:
+    resolution: {integrity: sha512-artYS8Y7l9Cgqi1WyoNZtHW+pXOM0Tg75eupENoSEx59hMJlBqXxsTgJQ8T0ycrb6h9lw9iNKVB8cKEn7HjG2A==}
+    dependencies:
+      '@types/dom-webcodecs': 0.1.11
+      '@types/wicg-file-system-access': 2020.9.8
+    dev: false
 
   /mri@1.2.0:
     resolution: {integrity: sha512-tzzskb3bG8LvYGFF/mDTpq3jpI6Q9wc3LEmBaghu+DdCssd1FakN7Bc0hVNmEyGq1bq3RgfkCb3cmQLpNPOroA==}

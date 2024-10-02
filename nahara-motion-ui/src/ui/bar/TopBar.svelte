@@ -1,13 +1,60 @@
 <script lang="ts">
+    import { concat, EncoderPipeline, MuxerPipeline, SceneRenderPipeline, type IPipeline } from "@nahara/motion-video";
     import { app } from "../../appglobal";
+    import { openMenuAt } from "../menu/MenuHost.svelte";
+    import type { IScene } from "@nahara/motion";
 
     const currentProject = app.currentProjectStore;
     const currentScene = app.currentSceneStore;
+
+    function openFileMenu(e: MouseEvent) {
+        openMenuAt(e.clientX, e.clientY, [
+            {
+                type: "simple",
+                name: "Quick render",
+                async click() {
+                    const frameRate = 60;
+                    const pipeline: IPipeline<IScene, any, [any, any, ArrayBuffer]> = concat(
+                        new SceneRenderPipeline(
+                            $currentScene!.metadata.size.x,
+                            $currentScene!.metadata.size.y,
+                            frameRate, frameRate * 10
+                        ),
+                        new EncoderPipeline({
+                            codec: "avc1.4d0028",
+                            width: $currentScene!.metadata.size.x,
+                            height: $currentScene!.metadata.size.y,
+                            bitrate: 10_000_000,
+                            framerate: frameRate
+                        }),
+                        new MuxerPipeline({
+                            codec: "avc",
+                            width: $currentScene!.metadata.size.x,
+                            height: $currentScene!.metadata.size.y,
+                            frameRate: frameRate
+                        })
+                    );
+
+                    await pipeline.initialize(console.log);
+                    pipeline.consume($currentScene!);
+
+                    const result = await pipeline.finalize();
+                    const blob = new Blob([result[2]]);
+                    const downloadLink = document.createElement("a");
+                    downloadLink.href = URL.createObjectURL(blob);
+                    downloadLink.download = "video.mp4";
+                    downloadLink.click();
+                    URL.revokeObjectURL(downloadLink.href);
+                },
+            }
+        ]);
+    }
 </script>
 
 <div class="menu-bar">
     <div class="left">
-        <div class="menu">File</div>
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <div class="menu" role="button" tabindex="0" on:click={openFileMenu}>File</div>
         <div class="menu">Edit</div>
         <div class="menu">Window</div>
         <div class="menu">Help</div>

@@ -10,7 +10,8 @@
         "check": "svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.node.json"
     },
     "dependencies": {
-        "@nahara/motion": "workspace:*"
+        "@nahara/motion": "workspace:*",
+        "@nahara/motion-video": "workspace:*"
     },
     "devDependencies": {
         "@sveltejs/vite-plugin-svelte": "^3.1.1",

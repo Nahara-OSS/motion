@@ -34,3 +34,8 @@ pnpm install
 pnpm dev
 # Open 127.0.0.1:5173 to see the app
 ```
+
+## Modules
+- `nahara-motion`: Nahara's Motion Engine
+- `nahara-motion-ui`: The front-facing user interface for Nahara's Motion
+- `nahara-motion-video`: Render and encode the scene to video file (`.mp4` in this case)
