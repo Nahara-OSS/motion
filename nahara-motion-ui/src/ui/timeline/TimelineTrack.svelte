@@ -61,12 +61,19 @@
 
             // Hold shift to ignore keyframes
             if (!e.shiftKey) {
-                const animatedProps: IAnimatable<any>[] = (object.object.properties as any[])
-                    .filter(v => !v["isSimple"])
-                    .filter(v => (v as IAnimatable<any>).animated);
+                const animatedProps: IAnimatable<any>[] = object.object.properties
+                    .filter(v => v instanceof AnimatableObjectProperty && v.animatable.animated)
+                    .map(v => (v as AnimatableObjectProperty<any>).animatable);
 
                 for (const prop of animatedProps) {
                     for (const kf of [...prop]) prop.modify(kf, { time: kf.time + deltaTime });
+                }
+
+                if ((object.object as ISceneContainerObject).isContainer) {
+                    for (const child of (object.object as ISceneContainerObject)) {
+                        child.timeStart += deltaTime;
+                        child.timeEnd += deltaTime;
+                    }
                 }
             }
 
