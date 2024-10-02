@@ -167,6 +167,14 @@
         if (contextMenuData.property) {
             menu.push({
                 type: "simple",
+                name: "New keyframe at seekhead",
+                click() {
+                    const val = contextMenuData.property!.get($seekhead.position);
+                    contextMenuData.property!.set($seekhead.position, val);
+                    currentScene.update(a => a);
+                },
+            }, {
+                type: "simple",
                 name: "Clear all keyframes",
                 click() {
                     contextMenuData.property!.clear();
