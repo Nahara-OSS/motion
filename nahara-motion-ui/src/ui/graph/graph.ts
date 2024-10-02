@@ -92,8 +92,9 @@ export namespace graph {
             }
 
             const midpoint = (min + max) / 2;
+            const rawUnitsPerPx = Math.max((max - min) / height, 0.01);
             state.verticalScroll = midpoint;
-            return Math.max((max - min + Math.max(10, height / 10)) / height, 0.01);
+            return rawUnitsPerPx * (1 + 20 / height);
         }
 
         return state.verticalZoom;

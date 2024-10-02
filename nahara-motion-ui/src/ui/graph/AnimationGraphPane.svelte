@@ -184,7 +184,7 @@
                     cursor: ew-resize;
                     top: 0;
                     width: 16px;
-                    height: 17px;
+                    height: 15px;
                     translate: -50% 0;
                     background-color: #ffafaf;
                     border: 1px solid #ff5c5c;
@@ -193,7 +193,7 @@
                         content: '';
                         position: absolute;
                         left: 50%;
-                        top: 11px;
+                        top: 9px;
                         translate: -50% 0;
                         width: 12px;
                         height: 12px;
