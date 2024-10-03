@@ -20,6 +20,7 @@ export * from "./scene/object.js";
 export * from "./scene/property.js";
 export * from "./scene/scene.js";
 
+export * from "./anchor.js";
 export * from "./types.js";
 export * from "./utils.js";
 // Users are not supposed to have access to system/*

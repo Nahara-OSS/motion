@@ -2,6 +2,8 @@
     import * as motion from "@nahara/motion";
     import { app } from "../../appglobal";
     import Property from "./Property.svelte";
+    import Dropdown from "../input/Dropdown.svelte";
+    import { openMenuAt } from "../menu/MenuHost.svelte";
 
     const currentScene = app.currentSceneStore;
     const currentSelection = app.currentSelectionStore;
@@ -57,6 +59,20 @@
                     on:update={e => { cast(property).set($seekhead.position, e.detail); currentScene.update(a => a); }}
                     on:keyframebutton={() => handleKeyframeButton(property.animatable)}
                 />
+            {:else if property instanceof motion.EnumObjectProperty}
+                <tr class="dropdown">
+                    <th scope="row">{property.translationKey}</th>
+                    <td><Dropdown label={property.valueTranslator(property.get())} on:click={e => {
+                        openMenuAt(e.clientX, e.clientY, [...property.possibleValues].map(v => ({
+                            type: "simple",
+                            name: property.valueTranslator(v),
+                            click: () => {
+                                property.set($seekhead.position, v);
+                                currentScene.update(a => a);
+                            }
+                        })))
+                    }} /></td>
+                </tr>
             {:else}
                 <Property
                     name={property.translationKey}
@@ -80,6 +96,18 @@
         th {
             padding: 0;
             text-align: left;
+        }
+
+        tr.dropdown {
+            th[scope="row"] {
+                font-weight: normal;
+                padding: 0;
+                padding-left: 8px;
+            }
+
+            td {
+                padding: 0;
+            }
         }
 
         tr {
