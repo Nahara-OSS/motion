@@ -14,7 +14,7 @@
                 name: "Quick render",
                 async click() {
                     const frameRate = 60;
-                    const pipeline: IPipeline<IScene, any, [any, any, ArrayBuffer]> = concat(
+                    const pipeline: IPipeline<IScene, any, [any, any, Blob]> = concat(
                         new SceneRenderPipeline(
                             $currentScene!.metadata.size.x,
                             $currentScene!.metadata.size.y,
@@ -39,7 +39,7 @@
                     pipeline.consume($currentScene!);
 
                     const result = await pipeline.finalize();
-                    const blob = new Blob([result[2]]);
+                    const blob = result[2];
                     const downloadLink = document.createElement("a");
                     downloadLink.href = URL.createObjectURL(blob);
                     downloadLink.download = "video.mp4";

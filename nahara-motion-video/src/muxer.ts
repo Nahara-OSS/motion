@@ -1,14 +1,19 @@
-import { ArrayBufferTarget, Muxer, MuxerOptions } from "mp4-muxer";
+import { ArrayBufferTarget, Muxer, MuxerOptions, StreamTarget } from "mp4-muxer";
 import { IPipeline } from "./pipeline.js";
 
-export class MuxerPipeline implements IPipeline<[EncodedVideoChunk, EncodedVideoChunkMetadata | undefined], void, ArrayBuffer> {
-    muxer?: Muxer<ArrayBufferTarget>;
+export class MuxerPipeline implements IPipeline<[EncodedVideoChunk, EncodedVideoChunkMetadata | undefined], void, Blob> {
+    muxer?: Muxer<StreamTarget>;
+    collector?: Blob[];
 
     constructor(public readonly options: (MuxerOptions<any>["video"] & {})) {}
 
     async initialize(): Promise<void> {
+        this.collector = [];
         this.muxer = new Muxer({
-            target: new ArrayBufferTarget(),
+            target: new StreamTarget({
+                chunked: true,
+                onData: (data, _) => this.collector!.push(new Blob([data]))
+            }),
             video: this.options,
             fastStart: "fragmented"
         });
@@ -18,9 +23,11 @@ export class MuxerPipeline implements IPipeline<[EncodedVideoChunk, EncodedVideo
         this.muxer!.addVideoChunk(...input);
     }
 
-    async finalize(): Promise<ArrayBuffer> {
+    async finalize(): Promise<Blob> {
         console.log("MuxerPipeline: Finalizing...");
         this.muxer!.finalize();
-        return this.muxer!.target.buffer;
+        const result = new Blob(this.collector!);
+        this.collector = [];
+        return result;
     }
 }
