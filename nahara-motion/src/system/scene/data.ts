@@ -29,7 +29,7 @@ export class Data1D implements ISceneObject {
 
 export class Data2D implements ISceneObject {
     data: IAnimatable<Vec2> = Animatable.vec2("data");
-    properties = [this.data];
+    properties = [new AnimatableObjectProperty(this.data)];
     render(): void {}
 
     static readonly Type: ISceneObjectType<Data2D, { data: any }> = {

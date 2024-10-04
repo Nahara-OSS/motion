@@ -47,48 +47,18 @@ export interface SerializableSceneObjectInfo {
     object: any;
 }
 
-/**
- * A scene object that allows making adjustments in the viewport. If you think your object can be adjusted in viewport,
- * such as moving or resizing, consider implementing subinterface of this instead!
- */
-export interface ISceneObjectWithViewportEditing extends ISceneObject {
-    readonly isViewportEditable: true;
-    readonly isPositional?: boolean;
-    readonly isSizable?: boolean;
-    readonly isRotatable?: boolean;
-
-    /**
-     * The scale of this scene object's editable nodes in 2D preview viewport. The default scale is `(1; 1)`. The value
-     * for this should remain constant.
-     */
-    readonly viewportEditingScale?: Vec2;
-}
-
-/**
- * A scene object with positional data. Any object that's implementing this interface will have size handle controls
- * visible in the viewport, allowing user to easily edit the object's position by just grabbing it.
- */
-export interface ISceneObjectWithPositionalData extends ISceneObjectWithViewportEditing {
+export interface ISceneObjectWithPositionalData extends ISceneObject {
     readonly isPositional: true;
     readonly x: IAnimatable<number>;
     readonly y: IAnimatable<number>;
 }
 
-/**
- * A scene object with rotation data. Any object that's implementing this interface will have rotation control visible
- * in the viewport, allowing user to easily edit the object's rotation by just grabbing it. The rotation is always in
- * degrees (`deg`).
- */
-export interface ISceneObjectWithRotationData extends ISceneObjectWithViewportEditing {
+export interface ISceneObjectWithRotationData extends ISceneObject {
     readonly isRotatable: true;
     readonly rotation: IAnimatable<number>;
 }
 
-/**
- * A scene object with size data. Any object that's implementing this interface will have size controls visible in the
- * viewport, allowing user to easily edit the object's size by just grabbing the handles.
- */
-export interface ISceneObjectWithSizeData extends ISceneObjectWithViewportEditing {
+export interface ISceneObjectWithSizeData extends ISceneObject {
     readonly isSizable: true;
     readonly width: IAnimatable<number>;
     readonly height: IAnimatable<number>;
