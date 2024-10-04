@@ -14,11 +14,7 @@
         display: flex;
         background-color: #fff;
         flex-direction: column;
-        border: 1px solid #d1d1d1;
-
-        &:hover {
-            border: 1px solid #1d1d1d;
-        }
+        border: 1px solid #1d1d1d;
 
         .title {
             padding: 10px;
