@@ -1,17 +1,28 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from "svelte";
-    import Button from "../input/Button.svelte";
     import TimelineTrack from "./TimelineTrack.svelte";
     import { app } from "../../appglobal";
     import { snapping } from "../../snapping";
 
-    export let state: any;
-    let labelWidth = 200;
-    let zoom = 100; // 100 CSS pixels per second
-    let scroll = 0;
+    interface TimelinePaneState {
+        labelWidth?: number;
+        zoom?: number;
+        scroll?: number;
+    }
+
+    export let state: TimelinePaneState;
+    let labelWidth = state.labelWidth ?? 200;
+    let zoom = state.zoom ?? 100; // 100 CSS pixels per second
+    let scroll = state.scroll ?? 0;
     let displaySeconds: string, displayMillis: string;
     let tracksContainer: HTMLDivElement;
     let tracksContainerHeight = 0;
+
+    $: {
+        state.labelWidth = labelWidth;
+        state.scroll = scroll;
+        state.zoom = zoom;
+    }
 
     const currentScene = app.currentSceneStore;
     const currentSelection = app.currentSelectionStore;

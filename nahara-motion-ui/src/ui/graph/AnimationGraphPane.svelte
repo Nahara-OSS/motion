@@ -8,6 +8,7 @@
     import { openMenuAt } from "../menu/MenuHost.svelte";
     import { clipboard } from "../../clipboard";
 
+    export let state: any;
     let labelWidth = 200;
     let verticalZoom: number | "auto" = "auto";
     let verticalScroll = 0; // 0 at vertical center of graph
@@ -28,7 +29,7 @@
     }
     $: { $seekhead; properties; $currentScene; renderTimeline(); }
 
-    const state: graph.State = {
+    const rendererStates: graph.State = {
         get property() { return selectedProperty?.animatable; },
         get allProperties() { return properties.map(v => v.animatable); },
         selectedKeyframes: [],
@@ -67,7 +68,7 @@
         ctx.moveTo(seekX, 0);
         ctx.lineTo(seekX, canvas.offsetHeight);
         ctx.stroke();
-        graph.renderGraph(state, ctx, canvas.offsetWidth, canvas.offsetHeight);
+        graph.renderGraph(rendererStates, ctx, canvas.offsetWidth, canvas.offsetHeight);
     }
 
     function eventToCanvasXy(e: MouseEvent): [number, number] {
@@ -77,17 +78,17 @@
 
     function handleMouseDown(e: MouseEvent) {
         if (e.button != 0) return;
-        graph.handleMouseDown(state, ...eventToCanvasXy(e), canvas.offsetWidth, canvas.offsetHeight);
+        graph.handleMouseDown(rendererStates, ...eventToCanvasXy(e), canvas.offsetWidth, canvas.offsetHeight);
         renderTimeline();
     }
 
     function handleMouseMove(e: MouseEvent) {
-        graph.handleMouseMove(state, ...eventToCanvasXy(e), canvas.offsetWidth, canvas.offsetHeight);
-        if (state.adjustingKeyframe) currentScene.update(a => a);
+        graph.handleMouseMove(rendererStates, ...eventToCanvasXy(e), canvas.offsetWidth, canvas.offsetHeight);
+        if (rendererStates.adjustingKeyframe) currentScene.update(a => a);
     }
 
     function handleMouseUp(e: MouseEvent) {
-        graph.handleMouseUp(state, ...eventToCanvasXy(e), canvas.offsetWidth, canvas.offsetHeight);
+        graph.handleMouseUp(rendererStates, ...eventToCanvasXy(e), canvas.offsetWidth, canvas.offsetHeight);
         renderTimeline();
     }
 
@@ -122,7 +123,7 @@
         e.preventDefault();
 
         const contextMenuData = graph.handleContextMenu(
-            state, ...eventToCanvasXy(e),
+            rendererStates, ...eventToCanvasXy(e),
             canvas.offsetWidth, canvas.offsetHeight
         );
         const menu: DropdownEntry[] = [];
