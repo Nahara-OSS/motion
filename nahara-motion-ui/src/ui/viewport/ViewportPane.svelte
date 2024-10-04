@@ -197,13 +197,14 @@
     let adjusted = false;
 
     function mapMousePositionFromEvent(e: MouseEvent, scene: IScene) {
+        const { left, top } = canvas.getBoundingClientRect();
         const sceneWidth = scene.metadata.size.x;
         const sceneHeight = scene.metadata.size.y;
         const sceneRatio = sceneWidth / sceneHeight;
         const viewportRatio = canvas.width / canvas.height;
         const vpScale = sceneRatio > viewportRatio ? canvas.width / sceneWidth : canvas.height / sceneHeight;
-        const sx = (e.offsetX * devicePixelRatio - (canvas.width - sceneWidth * vpScale) / 2) / vpScale;
-        const sy = (e.offsetY * devicePixelRatio - (canvas.height - sceneHeight * vpScale) / 2) / vpScale;
+        const sx = ((e.clientX - left) * devicePixelRatio - (canvas.width - sceneWidth * vpScale) / 2) / vpScale;
+        const sy = ((e.clientY - top) * devicePixelRatio - (canvas.height - sceneHeight * vpScale) / 2) / vpScale;
         const sdx = e.movementX * devicePixelRatio / vpScale;
         const sdy = e.movementY * devicePixelRatio / vpScale;
 
