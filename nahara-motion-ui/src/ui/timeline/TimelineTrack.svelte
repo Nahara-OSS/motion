@@ -4,6 +4,8 @@
     import { createEventDispatcher } from "svelte";
     import { snapping } from "../../snapping";
     import { openMenuAt } from "../menu/MenuHost.svelte";
+    import { clipboard } from "../../clipboard";
+    import type { DropdownEntry } from "../menu/FancyMenu";
 
     // BIG AHH TODO: Weed out objects that are outside the visible timeline area
 
@@ -125,6 +127,26 @@
                     },
                 }))
             },
+            {
+                type: "tree",
+                name: "Copy",
+                children: [
+                    {
+                        type: "simple",
+                        name: "Easing function",
+                        click: () => clipboard.set(clipboard.Easing, keyframe.easing)
+                    }
+                ]
+            },
+            ...(clipboard.get(clipboard.Easing) ? [{
+                type: "simple",
+                name: "Paste easing function",
+                click() {
+                    const func = clipboard.get(clipboard.Easing);
+                    if (func) prop.modify(keyframe, { easing: func });
+                    dispatcher("update", object);
+                }
+            } as DropdownEntry] : []),
             {
                 type: "simple",
                 name: "Seek to this",

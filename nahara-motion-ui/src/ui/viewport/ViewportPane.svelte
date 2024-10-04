@@ -111,6 +111,7 @@
         for (const object of scene) {
             if (!filter(object)) continue;
             if (!(object.object as ISceneObjectWithViewportEditSupport<any>).isViewportEditable) continue;
+            if ($seekhead.position < object.timeStart || $seekhead.position >= object.timeEnd) continue;
 
             const { matrix, size } = viewportSceneToObjectOf(object);
             const { x, y } = matrix.inverse().transformPoint({ x: sceneX, y: sceneY, z: 0, w: 1 });

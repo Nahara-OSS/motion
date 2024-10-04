@@ -6,6 +6,7 @@
     import { snapping } from "../../snapping";
     import type { DropdownEntry } from "../menu/FancyMenu";
     import { openMenuAt } from "../menu/MenuHost.svelte";
+    import { clipboard } from "../../clipboard";
 
     let labelWidth = 200;
     let verticalZoom: number | "auto" = "auto";
@@ -127,6 +128,8 @@
         const menu: DropdownEntry[] = [];
 
         if (contextMenuData.property && contextMenuData.keyframe) {
+            const { property, keyframe } = contextMenuData;
+
             menu.push({
                 type: "tree",
                 name: "Easing",
@@ -146,11 +149,33 @@
                     name: s[1],
                     icon: s[2],
                     click() {
-                        contextMenuData.property!.modify(contextMenuData.keyframe!, { easing: s[0] });
+                        property.modify(keyframe, { easing: s[0] });
                         currentScene.update(a => a);
                     },
                 }))
             }, {
+                type: "tree",
+                name: "Copy",
+                children: [
+                    {
+                        type: "simple",
+                        name: "Easing function",
+                        click: () => clipboard.set(clipboard.Easing, keyframe.easing)
+                    }
+                ]
+            });
+            if (clipboard.get(clipboard.Easing)) {
+                menu.push({
+                    type: "simple",
+                    name: "Paste easing function",
+                    click() {
+                        const func = clipboard.get(clipboard.Easing);
+                        if (func) property.modify(keyframe, { easing: func });
+                        currentScene.update(a => a);
+                    }
+                });
+            }
+            menu.push({
                 type: "simple",
                 name: "Seek to this",
                 click: () => app.updateSeekhead({ ...$seekhead, position: contextMenuData.keyframe!.time })
