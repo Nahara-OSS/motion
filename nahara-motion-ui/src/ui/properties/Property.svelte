@@ -16,6 +16,8 @@
 
     export let name = "";
     export let value: any = {};
+    export let min: any = undefined;
+    export let max: any = undefined;
     export let animatable = false;
     export let animating = false;
 
@@ -51,7 +53,7 @@
         {:else if typeof value == "number"}
             <PropertyValuePart
                 name="<->"
-                {value}
+                {value} {min} {max}
                 on:update={e => {
                     value = e.detail;
                     dispatcher("update", value);

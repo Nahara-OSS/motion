@@ -3,18 +3,25 @@
     import TimelineTrack from "./TimelineTrack.svelte";
     import { app } from "../../appglobal";
     import { snapping } from "../../snapping";
+    import Button from "../input/Button.svelte";
+    import Dropdown from "../input/Dropdown.svelte";
+    import { openPopupAt } from "../popup/PopupHost.svelte";
+    import TimelineOptionsPopup from "./TimelineOptionsPopup.svelte";
 
     interface TimelinePaneState {
         labelWidth?: number;
         zoom?: number;
         scroll?: number;
+        followSeekhead?: boolean;
     }
 
     export let state: TimelinePaneState;
     let labelWidth = state.labelWidth ?? 200;
     let zoom = state.zoom ?? 100; // 100 CSS pixels per second
     let scroll = state.scroll ?? 0;
+    let followSeekhead = state.followSeekhead ?? false;
     let displaySeconds: string, displayMillis: string;
+    let seekbar: HTMLDivElement;
     let tracksContainer: HTMLDivElement;
     let tracksContainerHeight = 0;
 
@@ -22,6 +29,7 @@
         state.labelWidth = labelWidth;
         state.scroll = scroll;
         state.zoom = zoom;
+        state.followSeekhead = followSeekhead;
     }
 
     const currentScene = app.currentSceneStore;
@@ -35,6 +43,19 @@
         let minutes = Math.floor(timeInSeconds / 60).toString().padStart(2, "0");
         displaySeconds = `${minutes}:${seconds}.`;
         displayMillis = Math.floor($seekhead.position % 1000).toString().padStart(3, "0");
+    }
+
+    $: {
+        if (followSeekhead && seekbar) {
+            const width = seekbar.getBoundingClientRect().width;
+            const headPosX = ($seekhead.position - scroll) * zoom / 1000;
+
+            if (headPosX > width * 3 / 4) {
+                scroll = $seekhead.position - (width * 3 / 4 * 1000 / zoom);
+            } else if (headPosX < 0) {
+                scroll = Math.max($seekhead.position, 0);
+            }
+        }
     }
 
     $: tracksContainerHeight = tracksContainer?.offsetHeight;
@@ -64,7 +85,11 @@
         const deltaY = e.shiftKey ? e.deltaX : e.deltaY;
 
         if (e.ctrlKey) {
+            const seekbarLeft = seekbar.getBoundingClientRect().left;
+            scroll += (e.clientX - seekbarLeft) * 1000 / zoom;
             zoom = Math.max(Math.min(zoom - deltaY, 1000), 1);
+            scroll -= (e.clientX - seekbarLeft) * 1000 / zoom;
+            scroll = Math.max(scroll, 0);
             e.preventDefault();
         } else {
             scroll = Math.max(scroll + deltaX * 1000 / zoom, 0);
@@ -76,6 +101,18 @@
         draggingSeekhead = true;
         mouseEx = e.clientX;
         prevPosition = $seekhead.position;
+    }
+
+    function handleOptionsButtonClick(e: MouseEvent) {
+        openPopupAt(e.clientX, e.clientY, "Timeline", TimelineOptionsPopup, {
+            state,
+            onUpdate() {
+                scroll = state.scroll ?? 0;
+                zoom = state.zoom ?? 100;
+                labelWidth = state.labelWidth ?? 200;
+                followSeekhead = state.followSeekhead ?? false;
+            }
+        });
     }
 
     onMount(() => {
@@ -93,9 +130,10 @@
 <div class="wrapper">
     <div class="actions-seekbar-combo">
         <div class="actions" style:width="{labelWidth}px">
+            <Dropdown label="Options" on:click={handleOptionsButtonClick} />
         </div>
         <!-- svelte-ignore a11y-no-static-element-interactions -->
-        <div class="seekbar" on:mousedown|self={handleSeekbarMouseDown} on:wheel={handleWheelEvent}>
+        <div class="seekbar" bind:this={seekbar} on:mousedown|self={handleSeekbarMouseDown} on:wheel={handleWheelEvent}>
             <div
                 class="seekhead"
                 role="button"
@@ -142,13 +180,11 @@
     .actions-seekbar-combo {
         display: flex;
         height: 24px;
-        padding: 5px 0 0;
         align-items: center;
         border-bottom: 1px solid #d1d1d1;
         
         .actions {
             display: flex;
-            padding-left: 8px;
             box-sizing: border-box;
         }
 
