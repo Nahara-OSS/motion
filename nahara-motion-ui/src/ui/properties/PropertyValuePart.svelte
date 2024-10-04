@@ -4,6 +4,8 @@
     export let color = "#ffffff";
     export let name = "X";
     export let value = 0;
+    export let min: number | undefined = undefined;
+    export let max: number | undefined = undefined;
 
     const dispatcher = createEventDispatcher();
     let dragging = false;
@@ -21,6 +23,8 @@
     function handleDrag(e: MouseEvent) {
         if (!dragging) return;
         value += e.movementX * (e.shiftKey ? 0.1 : 1) * (e.ctrlKey ? 10 : 1) * (e.altKey ? 100 : 1);
+        if (min != null && value < min) value = min;
+        if (max != null && value > max) value = max;
         dispatcher("update", value);
     }
 
@@ -31,6 +35,8 @@
 
     function handleWheel(e: WheelEvent) {
         value += e.deltaY > 0 ? 1 : -1;
+        if (min != null && value < min) value = min;
+        if (max != null && value > max) value = max;
         dispatcher("update", value);
     }
 
@@ -43,10 +49,14 @@
     }
 
     function handleInput() {
+        if (min != null && value < min) value = min;
+        if (max != null && value > max) value = max;
         dispatcher("update", value);
     }
 
     function handleInputDone() {
+        if (min != null && value < min) value = min;
+        if (max != null && value > max) value = max;
         dispatcher("update", value);
     }
 </script>
