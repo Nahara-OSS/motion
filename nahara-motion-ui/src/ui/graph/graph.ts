@@ -266,6 +266,9 @@ export namespace graph {
             const { startControlPoint, endControlPoint } = keyframe.easing;
             const curveWidth = x - lastX;
             const curveHeight = (typeof keyframe.value != "number" && "model" in keyframe.value) ? 100 : y - lastY;
+            const nodeRadi = Math.min(curveWidth / 5, 5);
+            if (curveHeight == 0) return;
+
             const cp1Dist = Math.sqrt((startControlPoint.x * curveWidth)**2 + (startControlPoint.y * curveHeight)**2);
             const cp2Dist = Math.sqrt((endControlPoint.x * curveWidth)**2 + (endControlPoint.y * curveHeight)**2);
 
@@ -274,13 +277,13 @@ export namespace graph {
 
             ctx.beginPath();
             if (typeof keyframe.value != "number" && "model" in keyframe.value) ctx.moveTo(lastX, lastY);
-            else ctx.moveTo(lastX + startControlPoint.x * curveWidth * 5 / cp1Dist, lastY + startControlPoint.y * curveHeight * 5 / cp1Dist);
+            else ctx.moveTo(lastX + startControlPoint.x * curveWidth * nodeRadi / cp1Dist, lastY + startControlPoint.y * curveHeight * nodeRadi / cp1Dist);
             ctx.lineTo(lastX + startControlPoint.x * curveWidth, lastY + startControlPoint.y * curveHeight);
             ctx.stroke();
             ctx.closePath();
 
             ctx.beginPath();
-            ctx.moveTo(x + endControlPoint.x * curveWidth * 5 / cp2Dist, y + endControlPoint.y * curveHeight * 5 / cp2Dist);
+            ctx.moveTo(x + endControlPoint.x * curveWidth * nodeRadi / cp2Dist, y + endControlPoint.y * curveHeight * nodeRadi / cp2Dist);
             ctx.lineTo(x + endControlPoint.x * curveWidth, y + endControlPoint.y * curveHeight);
             ctx.stroke();
             ctx.closePath();
@@ -289,13 +292,13 @@ export namespace graph {
             ctx.lineWidth = 2;
 
             ctx.beginPath();
-            ctx.arc(lastX + startControlPoint.x * curveWidth, lastY + startControlPoint.y * curveHeight, 5, 0, Math.PI * 2);
+            ctx.arc(lastX + startControlPoint.x * curveWidth, lastY + startControlPoint.y * curveHeight, nodeRadi, 0, Math.PI * 2);
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
 
             ctx.beginPath();
-            ctx.arc(x + endControlPoint.x * curveWidth, y + endControlPoint.y * curveHeight, 5, 0, Math.PI * 2);
+            ctx.arc(x + endControlPoint.x * curveWidth, y + endControlPoint.y * curveHeight, nodeRadi, 0, Math.PI * 2);
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
@@ -344,29 +347,31 @@ export namespace graph {
                     const { startControlPoint, endControlPoint } = keyframe.easing;
                     const cp1Xy = [lastX + startControlPoint.x * curveWidth, lastY + startControlPoint.y * curveHeight];
                     const cp2Xy = [x + endControlPoint.x * curveWidth, y + endControlPoint.y * curveHeight];
+                    const nodeRadi = Math.min(curveWidth / 5, 5);
 
-                    // TODO deduplicate code
-                    state.keyframeCurveAreaWidth = curveWidth;
-                    state.keyframeCurveAreaHeight = curveHeight;
+                    if (curveHeight != 0) {
+                        // TODO deduplicate code
+                        state.keyframeCurveAreaWidth = curveWidth;
+                        state.keyframeCurveAreaHeight = curveHeight;
 
-                    if ((mx - cp1Xy[0]) ** 2 + (my - cp1Xy[1]) ** 2 <= 5 ** 2) {
-                        clickedKeyframe = keyframe;
-                        state.adjustingKeyframe = keyframe;
-                        state.adjustHandleType = "cp1";
-                        state.keyframeInitialTime = keyframe.time;
-                        state.keyframeInitialCp = { ...keyframe.easing.startControlPoint };
-                        return "break";
+                        if ((mx - cp1Xy[0]) ** 2 + (my - cp1Xy[1]) ** 2 <= nodeRadi ** 2) {
+                            clickedKeyframe = keyframe;
+                            state.adjustingKeyframe = keyframe;
+                            state.adjustHandleType = "cp1";
+                            state.keyframeInitialTime = keyframe.time;
+                            state.keyframeInitialCp = { ...keyframe.easing.startControlPoint };
+                            return "break";
+                        }
+
+                        if ((mx - cp2Xy[0]) ** 2 + (my - cp2Xy[1]) ** 2 <= nodeRadi ** 2) {
+                            clickedKeyframe = keyframe;
+                            state.adjustingKeyframe = keyframe;
+                            state.adjustHandleType = "cp2";
+                            state.keyframeInitialTime = keyframe.time;
+                            state.keyframeInitialCp = { ...keyframe.easing.endControlPoint };
+                            return "break";
+                        }
                     }
-
-                    if ((mx - cp2Xy[0]) ** 2 + (my - cp2Xy[1]) ** 2 <= 5 ** 2) {
-                        clickedKeyframe = keyframe;
-                        state.adjustingKeyframe = keyframe;
-                        state.adjustHandleType = "cp2";
-                        state.keyframeInitialTime = keyframe.time;
-                        state.keyframeInitialCp = { ...keyframe.easing.endControlPoint };
-                        return "break";
-                    }
-
                 }
                 
                 const draggingScalarHandle = typeof keyframe.value == "number" && (mx - x) ** 2 + (my - y) ** 2 <= 5 ** 2;

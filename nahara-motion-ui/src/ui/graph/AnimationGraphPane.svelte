@@ -137,7 +137,7 @@
                     ["ease-out", "Ease out", "easing.out"],
                     ["ease-in-out", "Ease in out", "easing.inout"],
                     [
-                        { type: "bezier", startControlPoint: { x: 0.5, y: -0.2 }, endControlPoint: { x: -0.5, y: 0.2 } },
+                        { type: "bezier", startControlPoint: { x: 0.5, y: 0 }, endControlPoint: { x: -0.5, y: 0 } },
                         "Bezier curve",
                         "easing.bezier"
                     ]
