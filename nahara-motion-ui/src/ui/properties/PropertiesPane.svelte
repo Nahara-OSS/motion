@@ -5,6 +5,7 @@
     import Dropdown from "../input/Dropdown.svelte";
     import { openMenuAt } from "../menu/MenuHost.svelte";
 
+    export let state: any;
     const currentScene = app.currentSceneStore;
     const currentSelection = app.currentSelectionStore;
     const seekhead = app.currentSeekheadStore;

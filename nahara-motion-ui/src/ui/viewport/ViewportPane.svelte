@@ -8,6 +8,7 @@
     import { openPopupAt } from "../popup/PopupHost.svelte";
     import ColorPickerPopup from "../popup/ColorPickerPopup.svelte";
 
+    export let state: any;
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D;
     $: {

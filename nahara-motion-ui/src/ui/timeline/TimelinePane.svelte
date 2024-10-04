@@ -5,6 +5,7 @@
     import { app } from "../../appglobal";
     import { snapping } from "../../snapping";
 
+    export let state: any;
     let labelWidth = 200;
     let zoom = 100; // 100 CSS pixels per second
     let scroll = 0;

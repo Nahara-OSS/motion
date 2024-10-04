@@ -5,6 +5,7 @@
     import * as motion from "@nahara/motion";
     import Outliner from "./Outliner.svelte";
 
+    export let state: any;
     const currentScene = app.currentSceneStore;
     const selection = app.currentSelectionStore;
 

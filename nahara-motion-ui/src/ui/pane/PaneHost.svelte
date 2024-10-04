@@ -7,9 +7,14 @@ Pane host is a component that includes the panes and layout management.
         type: T;
     }
 
+    export interface TabState {
+        type: string;
+        state: any;
+    }
+
     export interface TabLayout extends IBaseLayout<"tab"> {
         /**
-         * An array of IDs that maps to component.
+         * An array of IDs that maps state ID whose type maps to component.
          */
         tabs: string[];
         selected: string;
@@ -66,6 +71,7 @@ Pane host is a component that includes the panes and layout management.
         tabs: [],
         selected: ""
     };
+    export let states: Record<string, TabState> = {};
     export let component: (name: string) => { new(...args: any[]): SvelteComponent };
     export let tabNames: (id: string) => string = id => id;
     export let dividerSize = 8;
@@ -372,7 +378,9 @@ Pane host is a component that includes the panes and layout management.
             })}
             on:paneclose={e => paneNuke(tabLayout)}
         >
-            <svelte:component this={component(tabLayout.selected)} />
+            {#if tabLayout.selected}
+                <svelte:component this={component(states[tabLayout.selected].type)} state={states[tabLayout.selected].state} />
+            {/if}
         </TabbedPane>
     {/each}
     {#each splitLayouts as splitLayout}
