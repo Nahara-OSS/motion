@@ -26,7 +26,10 @@ export class Box2D implements ISceneObjectWithPositionalData, ISceneObjectWithSi
     width: IAnimatable<number> = Animatable.scalar("width", 100);
     height: IAnimatable<number> = Animatable.scalar("height", 100);
     rotation: IAnimatable<number> = Animatable.scalar("rotation");
-    color: IAnimatable<Color> = Animatable.color("color", { model: "rgba", r: 255, g: 255, b: 255, a: 255 });
+    fill: IAnimatable<Color> = Animatable.color("fill", { model: "rgba", r: 255, g: 255, b: 255, a: 255 });
+    stroke: IAnimatable<Color> = Animatable.color("stroke", { model: "rgba", r: 0, g: 0, b: 0, a: 0 });
+    lineWidth: IAnimatable<number> = Animatable.scalar("lineWidth", 1);
+    cornerRadius: IAnimatable<number> = Animatable.scalar("cornerRadius");
 
     properties = [
         EnumObjectProperty.anchor("anchor", () => this.anchor, v => this.anchor = v),
@@ -36,16 +39,35 @@ export class Box2D implements ISceneObjectWithPositionalData, ISceneObjectWithSi
         new AnimatableObjectProperty(this.width),
         new AnimatableObjectProperty(this.height),
         new AnimatableObjectProperty(this.rotation),
-        new AnimatableObjectProperty(this.color),
+        new AnimatableObjectProperty(this.fill),
+        new AnimatableObjectProperty(this.stroke),
+        new AnimatableObjectProperty(this.lineWidth),
+        new AnimatableObjectProperty(this.cornerRadius),
     ];
 
     render(context: RenderContext): void {
         const { parentToThis, clickableSize } = this.getViewportEditorInfo(context.time, context.containerSize);
-        const color = this.color.get(context.time);
+        const fill = this.fill.get(context.time);
+        const stroke = this.stroke.get(context.time);
         const parent = context.canvas.getTransform();
-        context.canvas.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${(color.a ?? 255) / 255})`;
+        const cornerRadius = Math.max(this.cornerRadius.get(context.time), 0);
+        const lineWidth = this.lineWidth.get(context.time);
+
         context.canvas.setTransform(parent.multiply(parentToThis));
-        context.canvas.fillRect(0, 0, clickableSize.x, clickableSize.y);
+        context.canvas.beginPath();
+        context.canvas.roundRect(0, 0, clickableSize.x, clickableSize.y, cornerRadius);
+
+        if ((fill.a ?? 255) > 0) {
+            context.canvas.fillStyle = `rgba(${fill.r}, ${fill.g}, ${fill.b}, ${(fill.a ?? 255) / 255})`;
+            context.canvas.fill();
+        }
+
+        if ((stroke.a ?? 255) > 0) {
+            context.canvas.strokeStyle = `rgba(${stroke.r}, ${stroke.g}, ${stroke.b}, ${(stroke.a ?? 255) / 255})`;
+            context.canvas.lineWidth = lineWidth;
+            context.canvas.stroke();
+        }
+
         context.canvas.setTransform(parent);
     }
 
@@ -180,7 +202,10 @@ export class Box2D implements ISceneObjectWithPositionalData, ISceneObjectWithSi
         width: any,
         height: any,
         rotation: any,
-        color: any
+        fill: any,
+        stroke: any,
+        lineWidth: any,
+        cornerRadius: any
     }> = {
         class: Box2D,
         name: "Box",
@@ -195,7 +220,10 @@ export class Box2D implements ISceneObjectWithPositionalData, ISceneObjectWithSi
             out.width.fromSerializable(data.width);
             out.height.fromSerializable(data.height);
             out.rotation.fromSerializable(data.rotation);
-            out.color.fromSerializable(data.color)
+            out.fill.fromSerializable(data.fill);
+            out.stroke.fromSerializable(data.stroke);
+            out.lineWidth.fromSerializable(data.lineWidth);
+            out.cornerRadius.fromSerializable(data.cornerRadius);
             return out;
         },
         toSerializable(object) {
@@ -207,7 +235,10 @@ export class Box2D implements ISceneObjectWithPositionalData, ISceneObjectWithSi
                 width: object.width.serializable,
                 height: object.height.serializable,
                 rotation: object.rotation.serializable,
-                color: object.color.serializable
+                fill: object.fill.serializable,
+                stroke: object.stroke.serializable,
+                lineWidth: object.lineWidth.serializable,
+                cornerRadius: object.cornerRadius.serializable
             };
         },
     };
