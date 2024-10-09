@@ -1,9 +1,18 @@
 {
     "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+    "id": "nahara-motion",
     "name": "Nahara's Motion",
     "short_name": "Motion",
     "description": "Motion graphics editor",
+    "categories": ["productivity"],
+    "orientation": "any",
     "start_url": ".",
+    "theme_color": "#d1d1d1",
+    "background_color": "#ffffff",
+    "dir": "ltr",
+    "lang": "en",
+    "prefer_related_applications": false,
+    "related_applications": [],
     "display": "standalone",
     "display_override": ["window-controls-overlay"],
     "icons": [
