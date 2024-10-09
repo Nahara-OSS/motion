@@ -84,9 +84,11 @@
         <div class="menu">Window</div>
         <div class="menu">Help</div>
     </div>
+    <div class="spacer"></div>
     <div class="middle">
         <div class="menu">{title}</div>
     </div>
+    <div class="spacer"></div>
     <div class="right">
         {#each $allLayouts as layout}
             <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -116,12 +118,21 @@
         background-color: #efefef;
         border-bottom: 1px solid #d1d1d1;
         box-sizing: border-box;
-        display: grid;
+        display: flex;
         grid-auto-flow: column;
-        padding: 0 8px;
+        padding-right: calc(100% - env(titlebar-area-width));
 
         .left, .right, .middle {
             display: flex;
+        }
+
+        .spacer {
+            flex: 1 1 auto;
+            -webkit-app-region: drag;
+        }
+
+        .left {
+            padding-left: 8px;
         }
 
         .middle {
@@ -129,7 +140,7 @@
         }
 
         .right {
-            justify-content: flex-end;
+            padding-right: 8px;
         }
 
         .tab, .menu {

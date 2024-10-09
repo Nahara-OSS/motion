@@ -5,6 +5,7 @@
     "description": "Motion graphics editor",
     "start_url": ".",
     "display": "standalone",
+    "display_override": ["window-controls-overlay"],
     "icons": [
         {"src": "icon_color.svg", "type": "image/svg", "sizes": "any"},
         {"src": "icon_color_144.png", "type": "image/png", "sizes": "144x144"},
