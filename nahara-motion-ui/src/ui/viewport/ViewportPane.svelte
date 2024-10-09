@@ -136,16 +136,18 @@
         for (const selected of $currentSelection.multiple) {
             if ((selected.object as ISceneObjectWithViewportEditSupport<any>).isViewportEditable) {
                 const data = selected.object as ISceneObjectWithViewportEditSupport<any>;
-                const { parentMatrix } = viewportSceneToObjectOf($currentSelection.primary);
+                const { parentMatrix, parentSize } = viewportSceneToObjectOf(selected);
                 const parent = ctx.getTransform();
                 ctx.setTransform(parent.multiply(parentMatrix));
+                if (selected != $currentSelection.primary) ctx.globalAlpha = 0.5;
                 data.renderBlueprint({
                     canvas: ctx,
-                    containerSize: $currentScene.metadata.size,
+                    containerSize: parentSize,
                     time: $seekhead.position,
                     timeDelta: 0
                 }, selected.color, vpScale);
                 ctx.setTransform(parent);
+                ctx.globalAlpha = 1;
                 rendered.push(selected);
             }
         }

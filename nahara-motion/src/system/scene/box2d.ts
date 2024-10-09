@@ -1,19 +1,12 @@
 import { RenderContext } from "../../render/context.js";
-import { Color, Vec2 } from "../../types.js";
+import { Color } from "../../types.js";
 import { Animatable, IAnimatable } from "../../scene/animation.js";
-import { ISceneObjectType, ISceneObjectWithPositionalData, ISceneObjectWithRotationData, ISceneObjectWithSizeData } from "../../scene/object.js";
+import { ISceneObjectType } from "../../scene/object.js";
 import { AnimatableObjectProperty, EnumObjectProperty } from "../../scene/property.js";
-import { Anchor, calculateAnchorPos } from "../../anchor.js";
-import { ISceneObjectWithViewportEditSupport, ViewportEditMouseEvent, ViewportEditorInfo } from "../../scene/editor.js";
+import { Anchor } from "../../anchor.js";
+import { AbstractBoxLikeSceneObject } from "./common.js";
 
-interface ViewportEditorData {
-    initialLocal: Vec2,
-    initialParentLocal: Vec2,
-    initialPosition: Vec2,
-    initialSize: Vec2,
-}
-
-export class Box2D implements ISceneObjectWithPositionalData, ISceneObjectWithSizeData, ISceneObjectWithRotationData, ISceneObjectWithViewportEditSupport<ViewportEditorData> {
+export class Box2D extends AbstractBoxLikeSceneObject {
     isViewportEditable: true = true;
     isPositional: true = true;
     isSizable: true = true;
@@ -69,129 +62,6 @@ export class Box2D implements ISceneObjectWithPositionalData, ISceneObjectWithSi
         }
 
         context.canvas.setTransform(parent);
-    }
-
-    getViewportEditorInfo(time: number, parentSize: Vec2): ViewportEditorInfo {
-        const offsetX = this.x.get(time);
-        const offsetY = this.y.get(time);
-        const width = this.width.get(time);
-        const height = this.height.get(time);
-        const rotation = this.rotation.get(time);
-        const posInParent = calculateAnchorPos(parentSize, this.anchor);
-        const posInSelf = calculateAnchorPos({ x: width, y: height }, this.origin);
-
-        return {
-            parentToThis: new DOMMatrix()
-                .translate(posInParent.x, posInParent.y)
-                .translate(offsetX, offsetY)
-                .rotate(rotation)
-                .translate(-posInSelf.x, -posInSelf.y),
-            clickableSize: { x: width, y: height },
-            handles: [
-                {
-                    uid: "resize-xywh",
-                    hint: "resize-top-left",
-                    offsetX: 0,
-                    offsetY: 0
-                },
-                {
-                    uid: "resize-wh",
-                    hint: "resize-bottom-right",
-                    offsetX: width,
-                    offsetY: height
-                }
-            ],
-        };
-    }
-
-    renderBlueprint(context: RenderContext, objectColor: string, viewportScale: number): void {
-        const { parentToThis, clickableSize } = this.getViewportEditorInfo(context.time, context.containerSize);
-        const parent = context.canvas.getTransform();
-        context.canvas.setTransform(parent.multiply(parentToThis));
-        context.canvas.lineWidth = 4 / viewportScale;
-        context.canvas.strokeStyle = "#0007";
-        context.canvas.strokeRect(0, 0, clickableSize.x, clickableSize.y);
-        context.canvas.lineWidth = 2 / viewportScale;
-        context.canvas.strokeStyle = objectColor;
-        context.canvas.strokeRect(0, 0, clickableSize.x, clickableSize.y);
-
-        // TODO move these to new superclass
-        const originPos = calculateAnchorPos(clickableSize, this.origin);
-        context.canvas.beginPath();
-        context.canvas.moveTo(originPos.x - 5 / viewportScale, originPos.y - 5 / viewportScale);
-        context.canvas.lineTo(originPos.x + 5 / viewportScale, originPos.y + 5 / viewportScale);
-        context.canvas.moveTo(originPos.x + 5 / viewportScale, originPos.y - 5 / viewportScale);
-        context.canvas.lineTo(originPos.x - 5 / viewportScale, originPos.y + 5 / viewportScale);
-
-        context.canvas.lineWidth = 4 / viewportScale;
-        context.canvas.strokeStyle = "#0007";
-        context.canvas.stroke();
-        context.canvas.lineWidth = 2 / viewportScale;
-        context.canvas.strokeStyle = objectColor;
-        context.canvas.stroke();
-
-        context.canvas.setTransform(parent);
-    }
-
-    viewportEditMouseDown(event: ViewportEditMouseEvent): ViewportEditorData {
-        return {
-            initialLocal: { x: event.localObjectX, y: event.localObjectY },
-            initialParentLocal: { x: event.parentObjectLocalX, y: event.parentObjectLocalY },
-            initialPosition: { x: this.x.get(event.time), y: this.y.get(event.time) },
-            initialSize: { x: this.width.get(event.time), y: this.height.get(event.time) }
-        };
-    }
-
-    viewportEditMouseMove(event: ViewportEditMouseEvent, data: ViewportEditorData): void {
-        function set<T>(prop: IAnimatable<T>, value: T) {
-            if (prop.animated) prop.set(event.time, value);
-            else prop.defaultValue = value;
-        }
-
-        if (event.clickedHandle?.uid == "resize-xywh") {
-            if (this.origin & Anchor.RowLeft) {
-                set(this.x, data.initialPosition.x + (event.parentObjectLocalX - data.initialParentLocal.x));
-                set(this.width, data.initialSize.x - (event.localObjectX - data.initialLocal.x));
-            } else if (this.origin & Anchor.RowCenter) {
-                set(this.x, data.initialPosition.x + (event.parentObjectLocalX - data.initialParentLocal.x) / 2);
-                set(this.width, data.initialSize.x - (event.localObjectX - data.initialLocal.x));
-            } else if (this.origin & Anchor.RowRight) {
-                set(this.width, data.initialSize.x - (event.localObjectX - data.initialLocal.x));
-            }
-
-            if (this.origin & Anchor.ColTop) {
-                set(this.y, data.initialPosition.y + (event.parentObjectLocalY - data.initialParentLocal.y));
-                set(this.height, data.initialSize.y - (event.localObjectY - data.initialLocal.y));
-            } else if (this.origin & Anchor.ColMiddle) {
-                set(this.y, data.initialPosition.y + (event.parentObjectLocalY - data.initialParentLocal.y) / 2);
-                set(this.height, data.initialSize.y - (event.localObjectY - data.initialLocal.y));
-            } else if (this.origin & Anchor.ColBottom) {
-                set(this.height, data.initialSize.y - (event.localObjectY - data.initialLocal.y));
-            }
-        } else if (event.clickedHandle?.uid == "resize-wh") {
-            if (this.origin & Anchor.RowLeft) {
-                set(this.width, data.initialSize.x + (event.localObjectX - data.initialLocal.x));
-            } else if (this.origin & Anchor.RowCenter) {
-                set(this.x, data.initialPosition.x + (event.parentObjectLocalX - data.initialParentLocal.x) / 2);
-                set(this.width, data.initialSize.x + (event.localObjectX - data.initialLocal.x));
-            } else if (this.origin & Anchor.RowRight) {
-                set(this.x, data.initialPosition.x + (event.parentObjectLocalX - data.initialParentLocal.x));
-                set(this.width, data.initialSize.x + (event.localObjectX - data.initialLocal.x));
-            }
-
-            if (this.origin & Anchor.ColTop) {
-                set(this.height, data.initialSize.y + (event.localObjectY - data.initialLocal.y));
-            } else if (this.origin & Anchor.ColMiddle) {
-                set(this.y, data.initialPosition.y + (event.parentObjectLocalY - data.initialParentLocal.y) / 2);
-                set(this.height, data.initialSize.y + (event.localObjectY - data.initialLocal.y));
-            } else if (this.origin & Anchor.ColBottom) {
-                set(this.y, data.initialPosition.y + (event.parentObjectLocalY - data.initialParentLocal.y));
-                set(this.height, data.initialSize.y + (event.localObjectY - data.initialLocal.y));
-            }
-        } else if (!event.clickedHandle) {
-            set(this.x, data.initialPosition.x + (event.parentObjectLocalX - data.initialParentLocal.x));
-            set(this.y, data.initialPosition.y + (event.parentObjectLocalY - data.initialParentLocal.y));
-        }
     }
 
     static readonly Type: ISceneObjectType<Box2D, {
