@@ -14,10 +14,16 @@
     ],
     "screenshots": [
         {
-            "src": "screenshot_desktop_1.png",
+            "src": "screenshot_desktop_welcome.png",
             "type": "image/png",
             "form_factor": "wide",
-            "sizes": "2561x1599"
+            "sizes": "2560x1600"
+        },
+        {
+            "src": "screenshot_desktop_editor.png",
+            "type": "image/png",
+            "form_factor": "wide",
+            "sizes": "2560x1600"
         }
     ]
 }
