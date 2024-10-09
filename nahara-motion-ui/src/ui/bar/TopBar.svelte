@@ -60,7 +60,16 @@
                         duration: maxEndTime / 1000
                     });
                 },
-            }
+            },
+            ...($currentProject ? [
+                {
+                    type: "simple",
+                    name: "Close project",
+                    async click(event) {
+                        editor.closeProject();
+                    },
+                }
+            ] as DropdownEntry[] : [])
         ]);
     }
 

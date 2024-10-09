@@ -8,6 +8,7 @@
     import { openPopupAt } from "../popup/PopupHost.svelte";
     import ColorPickerPopup from "../popup/ColorPickerPopup.svelte";
     import type { EditorImpl } from "../../App.svelte";
+    import Welcome from "./Welcome.svelte";
 
     export let state: any;
     export let editor: EditorImpl;
@@ -439,15 +440,10 @@
 />
 
 <canvas bind:this={canvas} on:mousedown={handleCanvasMouseDown} on:contextmenu={handleCanvasContextMenu}></canvas>
-{#if !$currentProject || !$currentScene}
-    <div class="notice">
-        {#if !$currentProject}
-            <div>No project opened. Open existing project or create new one by clicking File &gt; Open/New project</div>
-        {/if}
-        {#if !$currentScene}
-            <div>Select a scene from Project explorer pane to edit</div>
-        {/if}
-    </div>
+{#if !$currentProject}
+    <div class="welcome-wrapper"><Welcome {editor} /></div>
+{:else if !$currentScene}
+    <div class="notice">Select a scene from Project explorer pane to edit</div>
 {/if}
 
 <style lang="scss">
@@ -467,5 +463,15 @@
         translate: -50% -50%;
         text-align: center;
         color: #7f7f7f;
+    }
+
+    .welcome-wrapper {
+        position: absolute;
+        top: 50%;
+        left: 0;
+        width: 100%;
+        translate: 0 -50%;
+        padding: 32px;
+        box-sizing: border-box;
     }
 </style>
