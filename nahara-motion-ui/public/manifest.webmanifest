@@ -1,0 +1,22 @@
+{
+    "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+    "name": "Nahara's Motion",
+    "short_name": "Motion",
+    "description": "Motion graphics editor",
+    "start_url": ".",
+    "display": "standalone",
+    "icons": [
+        {"src": "icon_color.svg", "type": "image/svg", "sizes": "any"},
+        {"src": "icon_color_144.png", "type": "image/png", "sizes": "144x144"},
+        {"src": "icon_color_256.png", "type": "image/png", "sizes": "256x256"},
+        {"src": "icon_color_512.png", "type": "image/png", "sizes": "512x512"}
+    ],
+    "screenshots": [
+        {
+            "src": "screenshot_desktop_1.png",
+            "type": "image/png",
+            "form_factor": "wide",
+            "sizes": "2561x1599"
+        }
+    ]
+}
