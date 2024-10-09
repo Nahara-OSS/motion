@@ -1,5 +1,6 @@
 <script context="module" lang="ts">
     export let openPopupAt: (x: number, y: number, title: string, component: any, data?: any) => void;
+    export let closePopup: () => void;
 </script>
 
 <script lang="ts">
@@ -20,6 +21,8 @@
         component = pcomponent;
         data = pdata;
     };
+
+    closePopup = () => component = undefined;
 
     $: {
         let boxRect = box?.getBoundingClientRect();

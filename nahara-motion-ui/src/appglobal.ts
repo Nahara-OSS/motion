@@ -21,19 +21,14 @@ export interface Seekhead {
     position: number;
 }
 
+// TODO: Very big TODO - Move everything to IEditor and EditorImpl
+// IEditor expose states of the editor to addons
+// EditorImpl is the implementation of IEditor that exposes the states to addons
+
 export namespace app {
     let logger = new motion.utils.Logger("app");
     logger.info("Initializing Nahara's Motion UI...");
-    
-    let currentProject: motion.IProject = new motion.Project({
-        name: "Empty project",
-        description: "Describe your top tier motion graphics here!",
-        workingTime: 0
-    });
-    let currentScene: motion.IScene | undefined = currentProject.newScene({
-        name: "Scene",
-        size: { x: 1920, y: 1080 }
-    });
+
     let currentSelection: ObjectsSelection | undefined = undefined;
     let currentSeekhead: Seekhead = {
         position: 0
@@ -41,27 +36,9 @@ export namespace app {
     let playbackState: "forward" | "backward" | "paused" = "paused";
 
     // Component stores
-    export const currentProjectStore = writable(currentProject);
-    export const currentSceneStore = writable<motion.IScene | undefined>(currentScene);
     export const currentSelectionStore = writable<ObjectsSelection | undefined>();
     export const currentSeekheadStore = writable(currentSeekhead);
     export const playbackStateStore = writable<"forward" | "backward" | "paused">(playbackState);
-
-    export function getCurrentProject() { return currentProject; }
-    export function openProject(project: motion.IProject) {
-        logger.info(`Opening project: ${project.metadata.name ?? "<Unnamed>"}`);
-        currentProject = project;
-        currentProjectStore.set(currentProject);
-        openScene([...project.scenes][0]);
-    }
-
-    export function getCurrentScene() { return currentScene; }
-    export function openScene(scene: motion.IScene | undefined) {
-        logger.info(`Opening scene: ${scene ? scene.metadata.name ?? "<Unnamed>" : "<Unload>"}`)
-        currentScene = scene;
-        currentSceneStore.set(scene);
-        deselectAll();
-    }
 
     export function getCurrentSelection() { return currentSelection; }
     export function deselectAll() {

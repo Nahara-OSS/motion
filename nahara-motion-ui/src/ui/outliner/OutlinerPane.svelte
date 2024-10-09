@@ -4,9 +4,11 @@
     import MenuHost, { openMenuAt } from "../menu/MenuHost.svelte";
     import * as motion from "@nahara/motion";
     import Outliner from "./Outliner.svelte";
+    import type { EditorImpl } from "../../App.svelte";
 
     export let state: any;
-    const currentScene = app.currentSceneStore;
+    export let editor: EditorImpl;
+    const currentScene = editor.sceneStore;
     const selection = app.currentSelectionStore;
 
     function findContainer(object?: motion.SceneObjectInfo): motion.IObjectContainer {

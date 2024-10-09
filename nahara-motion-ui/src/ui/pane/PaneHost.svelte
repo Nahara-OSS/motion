@@ -75,6 +75,7 @@ Pane host is a component that includes the panes and layout management.
     export let component: (name: string) => { new(...args: any[]): SvelteComponent };
     export let tabNames: (id: string) => string = id => id;
     export let dividerSize = 8;
+    export let extra: Record<any, any> = {};
     let halfDividerSize = dividerSize / 2;
 
     const dispatcher = createEventDispatcher();
@@ -379,7 +380,11 @@ Pane host is a component that includes the panes and layout management.
             on:paneclose={e => paneNuke(tabLayout)}
         >
             {#if tabLayout.selected}
-                <svelte:component this={component(states[tabLayout.selected].type)} state={states[tabLayout.selected].state} />
+                <svelte:component
+                    this={component(states[tabLayout.selected].type)}
+                    state={states[tabLayout.selected].state}
+                    {...extra}
+                />
             {/if}
         </TabbedPane>
     {/each}

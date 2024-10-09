@@ -7,15 +7,17 @@
     import type { DropdownEntry } from "../menu/FancyMenu";
     import { openMenuAt } from "../menu/MenuHost.svelte";
     import { clipboard } from "../../clipboard";
+    import type { EditorImpl } from "../../App.svelte";
 
     export let state: any;
+    export let editor: EditorImpl;
     let labelWidth = 200;
     let verticalZoom: number | "auto" = "auto";
     let verticalScroll = 0; // 0 at vertical center of graph
     let horizontalZoom = 100;
     let horizontalScroll = 0;
 
-    const currentScene = app.currentSceneStore;
+    const currentScene = editor.sceneStore;
     const currentSelection = app.currentSelectionStore;
     const seekhead = app.currentSeekheadStore;
 

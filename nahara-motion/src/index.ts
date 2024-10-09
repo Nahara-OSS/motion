@@ -7,9 +7,10 @@ export * from "./addon/registries.js";
 export * from "./addon/registry.js";
 export * from "./addon/service.js";
 
-export * from "./file/fs.js";
-export * from "./file/fsimpl.js";
+export * from "./editor/editor.js";
+export * from "./editor/layout.js";
 
+export * from "./project/assets.js";
 export * from "./project/project.js";
 
 export * from "./render/context.js";

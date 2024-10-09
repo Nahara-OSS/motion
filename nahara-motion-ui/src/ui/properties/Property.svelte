@@ -95,7 +95,7 @@
     }
 
     th {
-        padding-left: 8px;
+        padding: 0 8px;
         font-weight: normal;
     }
 

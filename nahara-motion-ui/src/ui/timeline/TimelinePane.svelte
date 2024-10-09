@@ -7,6 +7,7 @@
     import Dropdown from "../input/Dropdown.svelte";
     import { openPopupAt } from "../popup/PopupHost.svelte";
     import TimelineOptionsPopup from "./TimelineOptionsPopup.svelte";
+    import type { EditorImpl } from "../../App.svelte";
 
     interface TimelinePaneState {
         labelWidth?: number;
@@ -16,11 +17,11 @@
     }
 
     export let state: TimelinePaneState;
+    export let editor: EditorImpl;
     let labelWidth = state.labelWidth ?? 200;
     let zoom = state.zoom ?? 100; // 100 CSS pixels per second
     let scroll = state.scroll ?? 0;
     let followSeekhead = state.followSeekhead ?? false;
-    let displaySeconds: string, displayMillis: string;
     let seekbar: HTMLDivElement;
     let tracksContainer: HTMLDivElement;
     let tracksContainerHeight = 0;
@@ -32,18 +33,10 @@
         state.followSeekhead = followSeekhead;
     }
 
-    const currentScene = app.currentSceneStore;
+    const currentScene = editor.sceneStore;
     const currentSelection = app.currentSelectionStore;
     const seekhead = app.currentSeekheadStore;
     const dispatcher = createEventDispatcher();
-
-    $: {
-        let timeInSeconds = Math.floor($seekhead.position / 1000);
-        let seconds = (timeInSeconds % 60).toString().padStart(2, "0");
-        let minutes = Math.floor(timeInSeconds / 60).toString().padStart(2, "0");
-        displaySeconds = `${minutes}:${seconds}.`;
-        displayMillis = Math.floor($seekhead.position % 1000).toString().padStart(3, "0");
-    }
 
     $: {
         if (followSeekhead && seekbar) {

@@ -7,8 +7,10 @@
     import type { DropdownEntry } from "../menu/FancyMenu";
     import { openPopupAt } from "../popup/PopupHost.svelte";
     import ColorPickerPopup from "../popup/ColorPickerPopup.svelte";
+    import type { EditorImpl } from "../../App.svelte";
 
     export let state: any;
+    export let editor: EditorImpl;
     let canvas: HTMLCanvasElement;
     let ctx: CanvasRenderingContext2D;
     $: {
@@ -16,7 +18,8 @@
         render();
     }
 
-    const currentScene = app.currentSceneStore;
+    const currentProject = editor.projectStore;
+    const currentScene = editor.sceneStore;
     const currentSelection = app.currentSelectionStore;
     const seekhead = app.currentSeekheadStore;
 
@@ -39,7 +42,6 @@
 
     function render(timestamp = lastTimestamp) {
         if (!ctx) return;
-        console.log("render");
         ctx.reset();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -62,22 +64,24 @@
         ctx.fillStyle = "black";
         ctx.fillRect(0, 0, $currentScene.metadata.size.x, $currentScene.metadata.size.y);
 
-        // Render the scene
-        $currentScene?.renderFrame({
-            canvas: ctx,
-            containerSize: $currentScene.metadata.size,
-            time: $seekhead.position,
-            timeDelta: 0
-        });
+        if ($currentScene) {
+            // Render the scene
+            $currentScene?.renderFrame({
+                canvas: ctx,
+                containerSize: $currentScene.metadata.size,
+                time: $seekhead.position,
+                timeDelta: 0
+            });
 
-        // Render overlay
-        ctx.resetTransform();
-        ctx.translate(
-            (canvas.width - sceneWidth * sceneViewportScale) / 2,
-            (canvas.height - sceneHeight * sceneViewportScale) / 2
-        );
-        ctx.scale(sceneViewportScale, sceneViewportScale);
-        renderSelectionBox(sceneViewportScale);
+            // Render overlay
+            ctx.resetTransform();
+            ctx.translate(
+                (canvas.width - sceneWidth * sceneViewportScale) / 2,
+                (canvas.height - sceneHeight * sceneViewportScale) / 2
+            );
+            ctx.scale(sceneViewportScale, sceneViewportScale);
+            renderSelectionBox(sceneViewportScale);
+        }
     }
 
     function viewportSceneToObjectOf(
@@ -435,10 +439,33 @@
 />
 
 <canvas bind:this={canvas} on:mousedown={handleCanvasMouseDown} on:contextmenu={handleCanvasContextMenu}></canvas>
+{#if !$currentProject || !$currentScene}
+    <div class="notice">
+        {#if !$currentProject}
+            <div>No project opened. Open existing project or create new one by clicking File &gt; Open/New project</div>
+        {/if}
+        {#if !$currentScene}
+            <div>Select a scene from Project explorer pane to edit</div>
+        {/if}
+    </div>
+{/if}
 
 <style lang="scss">
     canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
         width: 100%;
         height: 100%;
+    }
+
+    .notice {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 80%;
+        translate: -50% -50%;
+        text-align: center;
+        color: #7f7f7f;
     }
 </style>

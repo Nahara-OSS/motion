@@ -1,6 +1,5 @@
 import { IAddon, IAddonHost } from "../addon/addon.js";
 import { registries } from "../addon/registries.js";
-import { objects } from "../scene/object.js";
 import { Box2D } from "./scene/box2d.js";
 import { Container } from "./scene/container.js";
 import { Data1D, Data2D } from "./scene/data.js";

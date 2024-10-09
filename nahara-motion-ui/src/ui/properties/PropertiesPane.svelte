@@ -4,9 +4,11 @@
     import Property from "./Property.svelte";
     import Dropdown from "../input/Dropdown.svelte";
     import { openMenuAt } from "../menu/MenuHost.svelte";
+    import type { EditorImpl } from "../../App.svelte";
 
     export let state: any;
-    const currentScene = app.currentSceneStore;
+    export let editor: EditorImpl;
+    const currentScene = editor.sceneStore;
     const currentSelection = app.currentSelectionStore;
     const seekhead = app.currentSeekheadStore;
     let primarySelection: motion.SceneObjectInfo | undefined;

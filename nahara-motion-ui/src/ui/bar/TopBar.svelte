@@ -1,15 +1,43 @@
 <script lang="ts">
-    import type { IObjectContainer, ISceneContainerObject } from "@nahara/motion";
-    import { app } from "../../appglobal";
+    import { SimpleProject, type IObjectContainer, type ISceneContainerObject } from "@nahara/motion";
     import { openMenuAt } from "../menu/MenuHost.svelte";
     import { openPopupAt } from "../popup/PopupHost.svelte";
     import RenderPane from "../render/RenderPane.svelte";
+    import type { EditorImpl } from "../../App.svelte";
+    import type { DropdownEntry } from "../menu/FancyMenu";
 
-    const currentProject = app.currentProjectStore;
-    const currentScene = app.currentSceneStore;
+    export let editor: EditorImpl;
+    const currentProject = editor.projectStore;
+    const currentScene = editor.sceneStore;
+    const allLayouts = editor.layout.allLayoutsStore;
 
     function openFileMenu(e: MouseEvent) {
         openMenuAt(e.clientX, e.clientY, [
+            ...($currentScene ? [
+                {
+                    type: "simple",
+                    name: "Save scene",
+                    async click(event) {
+                        if (!$currentProject || !$currentScene) return;
+                        await $currentProject.saveScene($currentScene);
+                    },
+                }
+            ] as DropdownEntry[] : []),
+            {
+                type: "simple",
+                name: "Open/New project",
+                async click(e) {
+                    const handle = await showDirectoryPicker({ id: "project", mode: "readwrite" });
+                    const meta = await SimpleProject.probeProjectMeta(handle);
+
+                    if (!meta) {
+                        // TODO show popup warning of project creation
+                    }
+
+                    const project = await SimpleProject.tryOpen(handle);
+                    editor.openProject(project);
+                }
+            },
             {
                 type: "simple",
                 name: "Render current scene",
@@ -35,6 +63,17 @@
             }
         ]);
     }
+
+    let title: string;
+    $: {
+        if ($currentProject) {
+            title = $currentProject.metadata?.name ?? "<unnamed project>";
+            if ($currentScene) title += " / " + ($currentScene.metadata?.name ?? "<unnamed scene>");
+            title += " · Nahara's Motion";
+        } else {
+            title = "Nahara's Motion";
+        }
+    }
 </script>
 
 <div class="menu-bar">
@@ -46,12 +85,28 @@
         <div class="menu">Help</div>
     </div>
     <div class="middle">
-        <div class="menu">{$currentProject.metadata.name ?? "<unnamed project>"}{$currentScene ? ` / ${$currentScene.metadata.name ?? "<unnamed scene>"}` : ''}</div>
+        <div class="menu">{title}</div>
     </div>
     <div class="right">
-        <div class="tab selected">General</div>
-        <div class="tab">Design</div>
-        <div class="tab">Animation</div>
+        {#each $allLayouts as layout}
+            <!-- svelte-ignore a11y-click-events-have-key-events -->
+            <div
+                class="tab"
+                role="button"
+                tabindex="0"
+                on:click={() => {
+                    editor.layout.current = layout.layout;
+                    allLayouts.update(a => a);
+                }}
+            >{layout.name}</div>
+        {/each}
+        <!-- svelte-ignore a11y-click-events-have-key-events -->
+        <div
+            class="tab"
+            role="button"
+            tabindex="0"
+            on:click={() => editor.layout.add(`Layout ${$allLayouts.length + 1}`, structuredClone(editor.layout.current))}
+        >+</div>
     </div>
 </div>
 
