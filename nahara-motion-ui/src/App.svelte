@@ -153,7 +153,7 @@
             extra={{ editor }}
             on:layoutupdate={e => $currentLayout.layout = e.detail}
         />
-        <MediaBar />
+        <MediaBar {editor} />
     </div>
     <PopupHost />
     <MenuHost />

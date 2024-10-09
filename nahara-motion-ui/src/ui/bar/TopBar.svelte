@@ -54,6 +54,7 @@
 
                     findMaxEndTime($currentScene!);
                     openPopupAt(e.clientX, e.clientY, "Render scene", RenderPane, {
+                        scene: $currentScene,
                         saveAs: `${$currentScene!.metadata.name ?? 'scene'}.mp4`,
                         resWidth: $currentScene!.metadata.size.x,
                         resHeight: $currentScene!.metadata.size.y,
@@ -124,8 +125,8 @@
 <style lang="scss">
     .menu-bar {
         height: 34px;
-        background-color: #efefef;
-        border-bottom: 1px solid #d1d1d1;
+        background-color: var(--appbars-background);
+        border-bottom: 1px solid var(--appbars-border);
         box-sizing: border-box;
         display: flex;
         grid-auto-flow: column;

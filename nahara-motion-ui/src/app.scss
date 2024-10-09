@@ -23,7 +23,28 @@ body, body > div#app {
 
 /* Color scheme */
 :root {
-    /* Colors here!!!! Use the --variable: #rrggbb; format. */
+    // Base colors
+    --base-background: #ffffff;
+    --base-foreground: #000000;
+    --base-header: #efefef;
+    --base-border-normal: #d1d1d1;
+    --base-border-focused: #1d1d1d;
+
+    // Pane colors
+    --pane-pane-header: var(--base-header);
+    --pane-background: var(--base-background);
+    --pane-border-normal: var(--base-border-normal);
+    --pane-border-focused: var(--base-border-focused);
+
+    // App bars - Top bar and media bar
+    --appbars-background: var(--base-header);
+    --appbars-border: var(--pane-border-normal);
+
+    // Controls
+    --control-background: var(--base-background);
+    --control-foreground: var(--base-foreground);
+    --control-border-normal: var(--base-border-normal);
+    --control-border-focused: var(--base-border-focused);
 }
 
 /* Design tokens */
@@ -34,11 +55,11 @@ body, body > div#app {
     white-space: nowrap;
     text-overflow: ellipsis;
     padding: 4px 8px;
-    background-color: #ffffff;
-    border: 1px solid #d1d1d1;
+    background-color: var(--control-background);
+    border: 1px solid var(--control-border-normal);
 
     &:hover {
-        border: 1px solid #2f2f2f;
+        border: 1px solid var(--control-border-focused);
         background-color: #efefef;
         box-shadow: inset 0 0 0 1px #efefef, inset 0 0 0 2px #fff;
     }

@@ -163,23 +163,23 @@
 <style lang="scss">
     .pane {
         position: absolute;
-        border: 1px solid #d1d1d1;
+        border: 1px solid var(--pane-border-normal);
         box-sizing: border-box;
-        background-color: #fff;
+        background-color: var(--pane-background);
 
         &.dragging {
             z-index: 1;
         }
 
         &:hover {
-            border: 1px solid #1e1e1e;
+            border: 1px solid var(--pane-border-focused);
         }
 
         .titlebar {
             display: flex;
             flex-direction: row;
             height: 34px;
-            background-color: #efefef;
+            background-color: var(--pane-pane-header);
             overflow-x: scroll;
 
             &::-webkit-scrollbar {
@@ -224,7 +224,7 @@
                 }
 
                 &.selected {
-                    background-color: #fff;
+                    background-color: var(--pane-background);
                 }
 
                 &.single-tab {

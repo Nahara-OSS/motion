@@ -30,7 +30,7 @@
         }
     ];
 
-    export let scene: IScene = app.getCurrentScene()!;
+    export let scene: IScene;
 
     export let saveAs = "scene.mp4";
     export let resWidth = 1920;

@@ -8,10 +8,12 @@
     import { getSnappingModeType } from "../popup/SnappingPopup";
     import SnappingPopup from "../popup/SnappingPopup.svelte";
     import TimeDisplay from "./TimeDisplay.svelte";
+    import type { EditorImpl } from "../../App.svelte";
 
+    export let editor: EditorImpl;
     const timelineSnapping = snapping.timelineStore;
     const seekhead = app.currentSeekheadStore;
-    const scene = app.currentSceneStore;
+    const scene = editor.sceneStore;
     const playbackState = app.playbackStateStore;
 
     let quickSeekMs: number;
@@ -75,8 +77,8 @@
     .media-bar {
         height: 48px;
         align-items: center;
-        background-color: #efefef;
-        border-top: 1px solid #d1d1d1;
+        background-color: var(--appbars-background);
+        border-top: 1px solid var(--appbars-border);
         display: grid;
         grid-auto-flow: column;
         padding: 0 8px;
