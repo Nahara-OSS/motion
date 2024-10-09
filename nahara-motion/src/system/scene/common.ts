@@ -87,6 +87,13 @@ export abstract class AbstractBoxLikeSceneObject implements ISceneObjectWithPosi
             strokeWithOutline();
         }
 
+        context.canvas.lineWidth = 4 / viewportScale;
+        context.canvas.strokeStyle = "#0007";
+        context.canvas.strokeRect(0, 0, context.containerSize.x, context.containerSize.y);
+        context.canvas.lineWidth = 2 / viewportScale;
+        context.canvas.strokeStyle = objectColor + (objectColor.length == 4 ? "7" : "7f");
+        context.canvas.strokeRect(0, 0, context.containerSize.x, context.containerSize.y);
+
         const anchorPos = calculateAnchorPos(context.containerSize, this.anchor);
         marketAt(anchorPos);
 
