@@ -1,6 +1,5 @@
 <script lang="ts">
     import { concat, EncoderPipeline, MuxerPipeline, SceneRenderPipeline, type IPipeline } from "@nahara/motion-video";
-    import { app } from "../../appglobal";
     import Button from "../input/Button.svelte";
     import Dropdown from "../input/Dropdown.svelte";
     import { openMenuAt } from "../menu/MenuHost.svelte";

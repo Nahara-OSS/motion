@@ -1,6 +1,6 @@
 <script lang="ts">
     import { SimpleProject } from "@nahara/motion";
-    import type { EditorImpl } from "../../App.svelte";
+    import type { EditorImpl } from "../../App";
 
     export let editor: EditorImpl;
 

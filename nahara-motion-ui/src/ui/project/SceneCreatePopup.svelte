@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { IProject, Vec2 } from "@nahara/motion";
-    import type { EditorImpl } from "../../App.svelte";
+    import type { EditorImpl } from "../../App";
     import Property from "../properties/Property.svelte";
     import Button from "../input/Button.svelte";
     import { closePopup } from "../popup/PopupHost.svelte";

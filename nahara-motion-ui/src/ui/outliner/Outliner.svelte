@@ -2,9 +2,10 @@
     import type { ISceneContainerObject, SceneObjectInfo } from "@nahara/motion";
     import { createEventDispatcher } from "svelte";
     import type { ObjectsSelection } from "../../appglobal";
+    import type { ObjectSelectionImpl } from "../../App";
 
     export let object: SceneObjectInfo;
-    export let selection: ObjectsSelection | undefined;
+    export let selection: ObjectSelectionImpl<SceneObjectInfo>;
     let container: ISceneContainerObject | undefined;
     let selected: boolean;
     let primarySelected: boolean;

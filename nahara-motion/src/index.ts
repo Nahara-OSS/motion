@@ -7,8 +7,11 @@ export * from "./addon/registries.js";
 export * from "./addon/registry.js";
 export * from "./addon/service.js";
 
+export * from "./editor/command.js";
 export * from "./editor/editor.js";
 export * from "./editor/layout.js";
+export * from "./editor/playback.js";
+export * from "./editor/selection.js";
 
 export * from "./project/assets.js";
 export * from "./project/project.js";

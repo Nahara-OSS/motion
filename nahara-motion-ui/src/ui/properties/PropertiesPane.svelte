@@ -1,16 +1,15 @@
 <script lang="ts">
     import * as motion from "@nahara/motion";
-    import { app } from "../../appglobal";
     import Property from "./Property.svelte";
     import Dropdown from "../input/Dropdown.svelte";
     import { openMenuAt } from "../menu/MenuHost.svelte";
-    import type { EditorImpl } from "../../App.svelte";
+    import type { EditorImpl } from "../../App";
 
     export let state: any;
     export let editor: EditorImpl;
     const currentScene = editor.sceneStore;
-    const currentSelection = app.currentSelectionStore;
-    const seekhead = app.currentSeekheadStore;
+    const currentSelection = editor.selections.objects.selectionStore;
+    const seekhead = editor.playback.currentTimeStore;
     let primarySelection: motion.SceneObjectInfo | undefined;
     let properties: motion.IObjectProperty<any>[];
 
@@ -23,9 +22,9 @@
     function cast<T>(input: T | undefined): T { return input as T; }
 
     function handleKeyframeButton(prop: motion.IAnimatable<any>) {
-        const now = prop.getKeyframe($seekhead.position);
+        const now = prop.getKeyframe($seekhead);
         if (now) prop.delete(now);
-        else prop.set($seekhead.position, prop.get($seekhead.position));
+        else prop.set($seekhead, prop.get($seekhead));
         currentScene.update(a => a);
     }
 </script>
@@ -56,10 +55,10 @@
             {#if property instanceof motion.AnimatableObjectProperty}
                 <Property
                     name={property.translationKey}
-                    value={property.get($seekhead.position)}
+                    value={property.get($seekhead)}
                     animatable
-                    animating={!!property.animatable.getKeyframe($seekhead.position)}
-                    on:update={e => { cast(property).set($seekhead.position, e.detail); currentScene.update(a => a); }}
+                    animating={!!property.animatable.getKeyframe($seekhead)}
+                    on:update={e => { cast(property).set($seekhead, e.detail); currentScene.update(a => a); }}
                     on:keyframebutton={() => handleKeyframeButton(property.animatable)}
                 />
             {:else if property instanceof motion.EnumObjectProperty}
@@ -70,7 +69,7 @@
                             type: "simple",
                             name: property.valueTranslator(v),
                             click: () => {
-                                property.set($seekhead.position, v);
+                                property.set($seekhead, v);
                                 currentScene.update(a => a);
                             }
                         })))
@@ -79,8 +78,8 @@
             {:else}
                 <Property
                     name={property.translationKey}
-                    value={property.get($seekhead.position)}
-                    on:update={e => { cast(property).set($seekhead.position, e.detail); currentScene.update(a => a); }}
+                    value={property.get($seekhead)}
+                    on:update={e => { cast(property).set($seekhead, e.detail); currentScene.update(a => a); }}
                 />
             {/if}
         {/each}

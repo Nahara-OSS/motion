@@ -1,5 +1,4 @@
 import * as motion from "@nahara/motion";
-import { writable } from "svelte/store";
 import type { DropdownEntry, TreeDropdownEntry } from "./ui/menu/FancyMenu";
 
 export interface ObjectsSelection {
@@ -28,85 +27,6 @@ export interface Seekhead {
 export namespace app {
     let logger = new motion.utils.Logger("app");
     logger.info("Initializing Nahara's Motion UI...");
-
-    let currentSelection: ObjectsSelection | undefined = undefined;
-    let currentSeekhead: Seekhead = {
-        position: 0
-    };
-    let playbackState: "forward" | "backward" | "paused" = "paused";
-
-    // Component stores
-    export const currentSelectionStore = writable<ObjectsSelection | undefined>();
-    export const currentSeekheadStore = writable(currentSeekhead);
-    export const playbackStateStore = writable<"forward" | "backward" | "paused">(playbackState);
-
-    export function getCurrentSelection() { return currentSelection; }
-    export function deselectAll() {
-        currentSelection = undefined;
-        currentSelectionStore.set(undefined);
-    }
-    export function selectSingle(object: motion.SceneObjectInfo) {
-        currentSelection = { primary: object, multiple: [object] };
-        currentSelectionStore.set(currentSelection);
-    }
-    export function selectMulti(object: motion.SceneObjectInfo, allowDeselecting = true) {
-        if (!currentSelection) {
-            selectSingle(object);
-            return;
-        }
-
-        if (currentSelection.multiple.includes(object)) {
-            if (!allowDeselecting) {
-                currentSelection.primary = object;
-                currentSelectionStore.set(currentSelection);
-                return;
-            }
-
-            const idx = currentSelection.multiple.indexOf(object);
-            const [deselected] = currentSelection.multiple.splice(idx, 1);
-            if (deselected == currentSelection.primary) currentSelection.primary = currentSelection.multiple[idx];
-
-            if (!currentSelection.primary) {
-                if (currentSelection.multiple.length == 0) {
-                    deselectAll();
-                    return;
-                }
-
-                currentSelection.primary = currentSelection.multiple[0];
-            }
-
-            currentSelectionStore.set(currentSelection);
-            return;
-        }
-
-        currentSelection.multiple.push(object);
-        currentSelection.primary = object;
-        currentSelectionStore.set(currentSelection);
-    }
-
-    export function getSeekhead() { return structuredClone(currentSeekhead); }
-    export function updateSeekhead(seekhead: Seekhead) {
-        currentSeekhead = seekhead;
-        currentSeekheadStore.set(seekhead);
-    }
-    export function getPlaybackState() { return playbackState; }
-    export function setPlaybackState(state: typeof playbackState) {
-        playbackState = state;
-        playbackStateStore.set(state);
-
-        if (state != "paused") {
-            let prevTimestamp = -1;
-
-            function renderCallback(timestamp: number) {
-                const delta = timestamp - prevTimestamp;
-                if (prevTimestamp != -1) updateSeekhead({ position: currentSeekhead.position + delta });
-                if (playbackState != "paused") requestAnimationFrame(renderCallback);
-                prevTimestamp = timestamp;
-            }
-
-            requestAnimationFrame(renderCallback);
-        }
-    }
 
     /**
      * Create menu entries for adding object

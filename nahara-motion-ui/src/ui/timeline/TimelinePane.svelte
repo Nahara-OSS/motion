@@ -1,13 +1,13 @@
 <script lang="ts">
     import { createEventDispatcher, onMount } from "svelte";
     import TimelineTrack from "./TimelineTrack.svelte";
-    import { app } from "../../appglobal";
     import { snapping } from "../../snapping";
     import Button from "../input/Button.svelte";
     import Dropdown from "../input/Dropdown.svelte";
     import { openPopupAt } from "../popup/PopupHost.svelte";
     import TimelineOptionsPopup from "./TimelineOptionsPopup.svelte";
-    import type { EditorImpl } from "../../App.svelte";
+    import type { EditorImpl } from "../../App";
+    import type { objects } from "@nahara/motion";
 
     interface TimelinePaneState {
         labelWidth?: number;
@@ -34,19 +34,19 @@
     }
 
     const currentScene = editor.sceneStore;
-    const currentSelection = app.currentSelectionStore;
-    const seekhead = app.currentSeekheadStore;
+    const currentSelection = editor.selections.objects.selectionStore;
+    const seekhead = editor.playback.currentTimeStore;
     const dispatcher = createEventDispatcher();
 
     $: {
         if (followSeekhead && seekbar) {
             const width = seekbar.getBoundingClientRect().width;
-            const headPosX = ($seekhead.position - scroll) * zoom / 1000;
+            const headPosX = ($seekhead - scroll) * zoom / 1000;
 
             if (headPosX > width * 3 / 4) {
-                scroll = $seekhead.position - (width * 3 / 4 * 1000 / zoom);
+                scroll = $seekhead - (width * 3 / 4 * 1000 / zoom);
             } else if (headPosX < 0) {
-                scroll = Math.max($seekhead.position, 0);
+                scroll = Math.max($seekhead, 0);
             }
         }
     }
@@ -60,13 +60,13 @@
     function handleSeekheadMouseDown(e: MouseEvent) {
         draggingSeekhead = true;
         mouseEx = e.clientX;
-        prevPosition = $seekhead.position;
+        prevPosition = $seekhead;
     }
 
     function handleSeekheadMouseMove(e: MouseEvent) {
         if (!draggingSeekhead) return;
         const nextPos = snapping.snapTimeline(Math.max(prevPosition + (e.clientX - mouseEx) * 1000 / zoom, 0));
-        app.updateSeekhead({ ...$seekhead, position: nextPos });
+        editor.playback.seekTo(nextPos);
     }
 
     function handleSeekheadMouseUp(e: MouseEvent) {
@@ -90,10 +90,10 @@
     }
 
     function handleSeekbarMouseDown(e: MouseEvent) {
-        app.updateSeekhead({ ...$seekhead, position: snapping.snapTimeline(scroll + e.offsetX * 1000 / zoom) });
+        editor.playback.seekTo(snapping.snapTimeline(scroll + e.offsetX * 1000 / zoom));
         draggingSeekhead = true;
         mouseEx = e.clientX;
-        prevPosition = $seekhead.position;
+        prevPosition = $seekhead;
     }
 
     function handleOptionsButtonClick(e: MouseEvent) {
@@ -131,7 +131,7 @@
                 class="seekhead"
                 role="button"
                 tabindex="0"
-                style:left="{($seekhead.position - scroll) * zoom / 1000}px"
+                style:left="{($seekhead - scroll) * zoom / 1000}px"
                 style:--tracks-height="{tracksContainerHeight}px"
                 on:mousedown={handleSeekheadMouseDown}
             ></div>
@@ -143,12 +143,12 @@
                 <TimelineTrack
                     {labelWidth} {zoom} {object} {scroll}
                     selectStateQuery={o =>
-                        o == $currentSelection?.primary ? "primary"
+                        o == $currentSelection.primary ? "primary"
                         : ($currentSelection?.multiple ?? []).includes(o) ? "secondary"
                         : "none"}
                     on:update={() => currentScene.update(a => a)}
-                    on:seekto={e => app.updateSeekhead({ ...$seekhead, position: e.detail })}
-                    on:select={e => app.selectSingle(e.detail)}
+                    on:seekto={e => editor.playback.seekTo(e.detail) }
+                    on:select={e => editor.selections.objects.addToSelection(e.detail)}
                 />
             {/each}
         {/if}

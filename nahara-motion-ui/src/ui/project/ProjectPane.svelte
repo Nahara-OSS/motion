@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { SceneMetadata } from "@nahara/motion";
-    import type { EditorImpl } from "../../App.svelte";
+    import type { EditorImpl } from "../../App";
     import Button from "../input/Button.svelte";
     import { openPopupAt } from "../popup/PopupHost.svelte";
     import SceneCreatePopup from "./SceneCreatePopup.svelte";

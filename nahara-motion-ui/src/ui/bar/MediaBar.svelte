@@ -1,6 +1,5 @@
 <script lang="ts">
-    import type { IObjectContainer, ISceneContainerObject } from "@nahara/motion";
-    import { app } from "../../appglobal";
+    import type { IObjectContainer, ISceneContainerObject, PlaybackState } from "@nahara/motion";
     import { snapping } from "../../snapping";
     import Button from "../input/Button.svelte";
     import Dropdown from "../input/Dropdown.svelte";
@@ -8,13 +7,13 @@
     import { getSnappingModeType } from "../popup/SnappingPopup";
     import SnappingPopup from "../popup/SnappingPopup.svelte";
     import TimeDisplay from "./TimeDisplay.svelte";
-    import type { EditorImpl } from "../../App.svelte";
+    import type { EditorImpl } from "../../App";
 
     export let editor: EditorImpl;
     const timelineSnapping = snapping.timelineStore;
-    const seekhead = app.currentSeekheadStore;
+    const seekhead = editor.playback.currentTimeStore;
+    const playbackState = editor.playback.stateStore;
     const scene = editor.sceneStore;
-    const playbackState = app.playbackStateStore;
 
     let quickSeekMs: number;
     let displayQuickSeekValue: string;
@@ -28,12 +27,14 @@
         displayQuickSeekValue = `${Math.round(quickSeekMs / 10) / 100}s`;
     }
 
-    function playbackToggle(type: ReturnType<typeof app.getPlaybackState>) {
-        app.setPlaybackState(app.getPlaybackState() != type ? type : "paused");
+    function playbackToggle(type: PlaybackState) {
+        // app.setPlaybackState(app.getPlaybackState() != type ? type : "paused");
+        editor.playback.changeState(editor.playback.state != type ? type : "paused");
     }
 
     function seekBy(amount: number) {
-        app.updateSeekhead({ ...$seekhead, position: Math.max($seekhead.position + amount, 0) });
+        // app.updateSeekhead({ ...$seekhead, position: Math.max($seekhead.position + amount, 0) });
+        editor.playback.seekTo($seekhead + amount);
     }
 
     function seekToEnd() {
@@ -49,7 +50,8 @@
             }
 
             findMaxEndTime($scene);
-            app.updateSeekhead({ ...$seekhead, position: maxEndTime });
+            // app.updateSeekhead({ ...$seekhead, position: maxEndTime });
+            editor.playback.seekTo(maxEndTime);
         }
     }
 </script>
@@ -62,14 +64,14 @@
         />
     </div>
     <div class="middle">
-        <Button label="Start <-" keys={["Home"]} on:click={() => app.updateSeekhead({ ...$seekhead, position: 0 })} />
+        <Button label="Start <-" keys={["Home"]} on:click={() => editor.playback.seekTo(0)} />
         <Button label="{displayQuickSeekValue} <-" keys={["<-"]} on:click={() => seekBy(-quickSeekMs)} />
-        <Button label={$playbackState == "paused" ? "Play" : "Pause"} keys={["Space"]} on:click={() => playbackToggle("forward")} />
+        <Button label={$playbackState == "paused" ? "Play" : "Pause"} keys={["Space"]} on:click={() => playbackToggle("playing-normal")} />
         <Button label="-> {displayQuickSeekValue}" keys={["->"]} on:click={() => seekBy(quickSeekMs)} />
         <Button label="-> End" keys={["End"]} on:click={seekToEnd} />
     </div>
     <div class="right">
-        <TimeDisplay time={$seekhead.position} />
+        <TimeDisplay time={$seekhead} />
     </div>
 </div>
 

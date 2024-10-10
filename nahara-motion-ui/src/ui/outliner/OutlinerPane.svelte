@@ -1,15 +1,15 @@
 <script lang="ts">
-    import { app } from "../../appglobal";
     import Button from "../input/Button.svelte";
     import MenuHost, { openMenuAt } from "../menu/MenuHost.svelte";
     import * as motion from "@nahara/motion";
     import Outliner from "./Outliner.svelte";
-    import type { EditorImpl } from "../../App.svelte";
+    import type { EditorImpl } from "../../App";
+    import { app } from "../../appglobal";
 
     export let state: any;
     export let editor: EditorImpl;
     const currentScene = editor.sceneStore;
-    const selection = app.currentSelectionStore;
+    const selection = editor.selections.objects.selectionStore;
 
     function findContainer(object?: motion.SceneObjectInfo): motion.IObjectContainer {
         if (!object) return $currentScene!;
@@ -81,7 +81,8 @@
             const obj = motion.objects.createNew(type, 0, 1000);
             findContainer($selection?.primary).add(obj);
             currentScene.update(a => a);
-            app.selectSingle(obj);
+            $selection.clear();
+            $selection.addToSelection(obj);
         }));
     }
 
@@ -89,15 +90,14 @@
         if (!$selection || !$currentScene) return;
         removeEntirelyFromContainer($selection.multiple, $currentScene);
         currentScene.update(a => a);
-        app.deselectAll();
+        $selection.clear();
     }
 
     function handleSelect(e: CustomEvent, selectStart: boolean) {
         const object: motion.SceneObjectInfo = e.detail.object;
         const multiselect: boolean = e.detail.multiselect || (selectStart && $selection?.multiple.includes(object));
-
-        if (multiselect) app.selectMulti(object, false);
-        else app.selectSingle(object);
+        if (!multiselect) $selection.clear();
+        if (object) $selection.addToSelection(object);
     }
 
     let draggingOulinerHandle = false;
@@ -114,13 +114,13 @@
         const toContainer = findParentOf(target) ?? $currentScene;
         const objects = [...$selection.multiple].filter(o => !isRecursive(o, toContainer) && o != target);
         removeEntirelyFromContainer(objects, $currentScene);
-        app.deselectAll();
+        $selection.clear();
         const insertIdx = toContainer.indexOf(target);
         if (insertIdx == -1) return; // ???
 
         for (const obj of objects) {
             toContainer.add(insertIdx + 1, obj);
-            app.selectMulti(obj);
+            $selection.addToSelection(obj);
         }
 
         currentScene.update(a => a);
@@ -136,11 +136,11 @@
         if (!$selection || !$currentScene) return;
         const objects = [...$selection.multiple].filter(o => !isRecursive(o, container));
         removeEntirelyFromContainer(objects, $currentScene);    
-        app.deselectAll();
+        $selection.clear();
 
         for (const obj of objects) {
             container.add(0, obj);
-            app.selectMulti(obj);
+            $selection.addToSelection(obj);
         }
 
         currentScene.update(a => a);
@@ -153,11 +153,11 @@
         if (!$selection || !$currentScene) return;
         const objects = [...$selection.multiple];
         removeEntirelyFromContainer(objects, $currentScene);
-        app.deselectAll();
+        $selection.clear();
 
         for (const obj of objects) {
             $currentScene.add(0, obj);
-            app.selectMulti(obj);
+            $selection.addToSelection(obj);
         }
 
         currentScene.update(a => a);
@@ -186,7 +186,7 @@
         <Button label="Delete" keys={["Del"]} disabled={!$selection} on:click={handleDeleteButton} />
     </div>
     <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div class="objects" on:mouseup|self={() => { if (!draggingOulinerHandle) app.deselectAll(); }}>
+    <div class="objects" on:mouseup|self={() => { if (!draggingOulinerHandle) $selection.clear(); }}>
         {#each [...$currentScene].reverse() as object}
             <Outliner
                 {object}

@@ -1,5 +1,6 @@
 import { IAddon, IAddonHost } from "../addon/addon.js";
 import { registries } from "../addon/registries.js";
+import { builtInCommands } from "./commands.js";
 import { Box2D } from "./scene/box2d.js";
 import { Container } from "./scene/container.js";
 import { Data1D, Data2D } from "./scene/data.js";
@@ -9,6 +10,10 @@ export class NaharaMotionSystemAddon implements IAddon {
     name = "Nahara's Motion (built-in)";
 
     init(host: IAddonHost): Promise<void> | void {
+        host.logger.info("Registering editor commands");
+        const commandsReg = host.getRegistry(registries.Commands);
+        commandsReg.register("viewport.add", builtInCommands.viewport.add);
+
         host.logger.info("Registering scene object types");
         const objectsReg = host.getRegistry(registries.Objects);
         objectsReg.register("box2d", Box2D.Type);

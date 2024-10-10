@@ -3,7 +3,7 @@
     import { openMenuAt } from "../menu/MenuHost.svelte";
     import { openPopupAt } from "../popup/PopupHost.svelte";
     import RenderPane from "../render/RenderPane.svelte";
-    import type { EditorImpl } from "../../App.svelte";
+    import type { EditorImpl } from "../../App";
     import type { DropdownEntry } from "../menu/FancyMenu";
 
     export let editor: EditorImpl;

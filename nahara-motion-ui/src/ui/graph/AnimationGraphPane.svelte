@@ -1,13 +1,12 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { app } from "../../appglobal";
     import { AnimatableObjectProperty, type Easing } from "@nahara/motion";
     import { graph } from "./graph";
     import { snapping } from "../../snapping";
     import type { DropdownEntry } from "../menu/FancyMenu";
     import { openMenuAt } from "../menu/MenuHost.svelte";
     import { clipboard } from "../../clipboard";
-    import type { EditorImpl } from "../../App.svelte";
+    import type { EditorImpl } from "../../App";
 
     export let state: any;
     export let editor: EditorImpl;
@@ -18,14 +17,14 @@
     let horizontalScroll = 0;
 
     const currentScene = editor.sceneStore;
-    const currentSelection = app.currentSelectionStore;
-    const seekhead = app.currentSeekheadStore;
+    const currentSelection = editor.selections.objects.selectionStore;
+    const seekhead = editor.playback.currentTimeStore;
 
     let canvas: HTMLCanvasElement;
     let properties: AnimatableObjectProperty<any>[] = [];
     let selectedProperty: AnimatableObjectProperty<any> | undefined = undefined;
     $: {
-        properties = $currentSelection?.primary.object.properties.filter(v => v instanceof AnimatableObjectProperty) ?? [];
+        properties = $currentSelection.primary?.object.properties.filter(v => v instanceof AnimatableObjectProperty) ?? [];
         if (selectedProperty && !properties.includes(selectedProperty)) selectedProperty = undefined;
         if (!selectedProperty) selectedProperty = properties[0];
     }
@@ -65,7 +64,7 @@
 
         ctx.lineWidth = 2;
         ctx.strokeStyle = "#ff5f5f";
-        const seekX = ($seekhead.position - horizontalScroll) * horizontalZoom / 1000;
+        const seekX = ($seekhead - horizontalScroll) * horizontalZoom / 1000;
         ctx.beginPath();
         ctx.moveTo(seekX, 0);
         ctx.lineTo(seekX, canvas.offsetHeight);
@@ -108,13 +107,13 @@
         draggingSeekhead = true;
         eventEx = e.clientX;
         eventEy = e.clientY;
-        initialSeekPosition = $seekhead.position;
+        initialSeekPosition = $seekhead;
     }
 
     function handleSeekheadMouseMove(e: MouseEvent) {
         if (!draggingSeekhead) return;
         const time = Math.max(initialSeekPosition + (e.clientX - eventEx) * 1000 / horizontalZoom, 0);
-        app.updateSeekhead({ ...$seekhead, position: snapping.snapTimeline(time) });
+        editor.playback.seekTo(snapping.snapTimeline(time));
     }
 
     function handleSeekheadMouseUp(e: MouseEvent) {
@@ -181,7 +180,7 @@
             menu.push({
                 type: "simple",
                 name: "Seek to this",
-                click: () => app.updateSeekhead({ ...$seekhead, position: contextMenuData.keyframe!.time })
+                click: () => editor.playback.seekTo(contextMenuData.keyframe!.time)
             }, {
                 type: "simple",
                 name: "Delete keyframe",
@@ -197,8 +196,8 @@
                 type: "simple",
                 name: "New keyframe at seekhead",
                 click() {
-                    const val = contextMenuData.property!.get($seekhead.position);
-                    contextMenuData.property!.set($seekhead.position, val);
+                    const val = contextMenuData.property!.get($seekhead);
+                    contextMenuData.property!.set($seekhead, val);
                     currentScene.update(a => a);
                 },
             }, {
@@ -244,7 +243,7 @@
             <!-- svelte-ignore a11y-no-static-element-interactions -->
             <div
                 class="seekhead"
-                style:left="{($seekhead.position - horizontalScroll) * horizontalZoom / 1000}px"
+                style:left="{($seekhead - horizontalScroll) * horizontalZoom / 1000}px"
                 on:mousedown={handleSeekheadMouseDown}
                 ></div>
             </div>

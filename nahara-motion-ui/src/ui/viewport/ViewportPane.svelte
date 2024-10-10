@@ -1,14 +1,14 @@
 <script lang="ts">
     import { onMount } from "svelte";
-    import { app } from "../../appglobal";
     import { objects, type IObjectContainer, type IScene, type ISceneContainerObject, type ISceneObjectWithPositionalData, type ISceneObjectWithViewportEditSupport, type SceneObjectInfo, type Vec2, type ViewportEditHandle } from "@nahara/motion";
     import { buildViewportSceneTree, type ViewportSceneTree } from "./sceneutils";
     import { openMenuAt } from "../menu/MenuHost.svelte";
     import type { DropdownEntry } from "../menu/FancyMenu";
     import { openPopupAt } from "../popup/PopupHost.svelte";
     import ColorPickerPopup from "../popup/ColorPickerPopup.svelte";
-    import type { EditorImpl } from "../../App.svelte";
+    import type { EditorImpl } from "../../App";
     import Welcome from "./Welcome.svelte";
+    import { app } from "../../appglobal";
 
     export let state: any;
     export let editor: EditorImpl;
@@ -21,8 +21,8 @@
 
     const currentProject = editor.projectStore;
     const currentScene = editor.sceneStore;
-    const currentSelection = app.currentSelectionStore;
-    const seekhead = app.currentSeekheadStore;
+    const currentSelection = editor.selections.objects.selectionStore;
+    const seekhead = editor.playback.currentTimeStore;
 
     let sceneTree: ViewportSceneTree | undefined = undefined;
     let lastTimestamp = 0;
@@ -70,7 +70,7 @@
             $currentScene?.renderFrame({
                 canvas: ctx,
                 containerSize: $currentScene.metadata.size,
-                time: $seekhead.position,
+                time: $seekhead,
                 timeDelta: 0
             });
 
@@ -98,7 +98,7 @@
             parentSize = size;
         }
 
-        const { clickableSize, parentToThis } = (object.object as ISceneObjectWithViewportEditSupport<any>).getViewportEditorInfo($seekhead.position, parentSize);
+        const { clickableSize, parentToThis } = (object.object as ISceneObjectWithViewportEditSupport<any>).getViewportEditorInfo($seekhead, parentSize);
         return {
             parentSize,
             parentMatrix,
@@ -117,7 +117,7 @@
         for (const object of scene) {
             if (!filter(object)) continue;
             if (!(object.object as ISceneObjectWithViewportEditSupport<any>).isViewportEditable) continue;
-            if ($seekhead.position < object.timeStart || $seekhead.position >= object.timeEnd) continue;
+            if ($seekhead < object.timeStart || $seekhead >= object.timeEnd) continue;
 
             const { matrix, size } = viewportSceneToObjectOf(object);
             const { x, y } = matrix.inverse().transformPoint({ x: sceneX, y: sceneY, z: 0, w: 1 });
@@ -135,7 +135,7 @@
     let adjustingObjectHandle: ViewportEditHandle | undefined = undefined;
 
     function renderSelectionBox(vpScale: number) {
-        if (!($currentSelection && $currentScene && sceneTree)) return;
+        if (!($currentSelection.primary && $currentScene && sceneTree)) return;
         let rendered: SceneObjectInfo[] = [];
 
         for (const selected of $currentSelection.multiple) {
@@ -148,7 +148,7 @@
                 data.renderBlueprint({
                     canvas: ctx,
                     containerSize: parentSize,
-                    time: $seekhead.position,
+                    time: $seekhead,
                     timeDelta: 0
                 }, selected.color, vpScale);
                 ctx.setTransform(parent);
@@ -159,7 +159,7 @@
 
         if (($currentSelection.primary.object as ISceneObjectWithViewportEditSupport<any>).isViewportEditable) {
             const data = $currentSelection.primary.object as ISceneObjectWithViewportEditSupport<any>;
-            const { clickableSize, handles } = data.getViewportEditorInfo($seekhead.position, $currentScene.metadata.size);
+            const { clickableSize, handles } = data.getViewportEditorInfo($seekhead, $currentScene.metadata.size);
 
             const parent = ctx.getTransform();
             const sceneToObject = viewportSceneToObjectOf($currentSelection.primary).matrix;
@@ -228,7 +228,7 @@
         if (!$currentScene || !sceneTree) return;
         const { sx, sy, vpScale } = mapMousePositionFromEvent(e, $currentScene);
 
-        if ($currentSelection) {
+        if ($currentSelection.primary) {
             if (($currentSelection.primary.object as ISceneObjectWithViewportEditSupport<any>).isViewportEditable) {
                 const primaryGeom = viewportSceneToObjectOf($currentSelection.primary);
                 const pointInObj = primaryGeom.matrix.inverse().transformPoint({ x: sx, y: sy });
@@ -240,8 +240,8 @@
                 if (!collided) {    
                     const objects = objectsUnderScenePos(sx, sy);
                     const toSelect = objects[objects.length - 1];
-                    if (toSelect) (e.shiftKey ? app.selectMulti : app.selectSingle)(toSelect);
-                    else if (!e.shiftKey) app.deselectAll();
+                    if (!e.shiftKey) $currentSelection.clear();
+                    if (toSelect) $currentSelection.addToSelection(toSelect);
                     clickingCanvas = false;
                     return;
                 }
@@ -253,7 +253,7 @@
                 adjustInitialSceneY = sy;
 
                 if (obj.viewportEditMouseDown) {
-                    const info = obj.getViewportEditorInfo($seekhead.position, $currentScene.metadata.size);
+                    const info = obj.getViewportEditorInfo($seekhead, $currentScene.metadata.size);
                     adjustingObjectMatrix = viewportSceneToObjectOf(adjustingObject).matrix;
                     const localObjectXY = adjustingObjectMatrix.inverse().transformPoint({ x: sx, y: sy, z: 0, w: 1 });
                     
@@ -272,7 +272,7 @@
                     }
 
                     adjustingObjectMouseData = obj.viewportEditMouseDown({
-                        time: $seekhead.position,
+                        time: $seekhead,
                         sceneX: sx,
                         sceneY: sy,
                         localObjectX: localObjectXY.x,
@@ -288,8 +288,8 @@
         } else {
             const objects = objectsUnderScenePos(sx, sy);
             const toSelect = objects[objects.length - 1];
-            if (toSelect) (e.shiftKey ? app.selectMulti : app.selectSingle)(toSelect);
-            else if (!e.shiftKey) app.deselectAll();
+            if (!e.shiftKey) $currentSelection.clear();
+            if (toSelect) $currentSelection.addToSelection(toSelect);
         }
     }
 
@@ -304,7 +304,7 @@
             if (adjustingObjectData.viewportEditMouseMove) {
                 const localObjectXY = adjustingObjectMatrix.inverse().transformPoint({ x: sx, y: sy, z: 0, w: 1 });
                 adjustingObjectData.viewportEditMouseMove({
-                    time: $seekhead.position,
+                    time: $seekhead,
                     sceneX: sx,
                     sceneY: sy,
                     localObjectX: localObjectXY.x,
@@ -329,7 +329,7 @@
             if (adjustingObjectData.viewportEditMouseUp) {
                 const localObjectXY = adjustingObjectMatrix.inverse().transformPoint({ x: sx, y: sy, z: 0, w: 1 });
                 adjustingObjectData.viewportEditMouseUp({
-                    time: $seekhead.position,
+                    time: $seekhead,
                     sceneX: sx,
                     sceneY: sy,
                     localObjectX: localObjectXY.x,
@@ -350,8 +350,8 @@
         if (!adjusted) {
             const objects = objectsUnderScenePos(sx, sy);
             const toSelect = objects[objects.length - 1];
-            if (toSelect) (e.shiftKey ? app.selectMulti : app.selectSingle)(toSelect);
-            else if (!e.shiftKey) app.deselectAll();
+            if (!e.shiftKey) $currentSelection.clear();
+            if (toSelect) $currentSelection.addToSelection(toSelect);
         }
     }
 
@@ -365,10 +365,10 @@
             root.push({
                 type: "tree",
                 name: "Add",
-                children: app.createAddObjectMenu(type => {
+                children: app.createAddObjectMenu(type => { // TODO switch to commands
                     if (!$currentScene) return;
-                    const obj = objects.createNew(type, $seekhead.position, $seekhead.position + 1000);
-                    const toContainer = $currentSelection &&
+                    const obj = objects.createNew(type, $seekhead, $seekhead + 1000);
+                    const toContainer = $currentSelection.primary &&
                         ($currentSelection.primary.object as ISceneContainerObject).isContainer
                         ? $currentSelection.primary.object as ISceneContainerObject
                         : $currentScene;
@@ -377,7 +377,7 @@
                     if (toContainer == $currentScene) {
                         posInContainer = { x: sx, y: sy };
                     } else {
-                        const { matrix } = viewportSceneToObjectOf($currentSelection!.primary);
+                        const { matrix } = viewportSceneToObjectOf($currentSelection.primary!);
                         posInContainer = matrix.inverse().transformPoint({ x: sx, y: sy, z: 0, w: 1 });
                     }
 
@@ -389,25 +389,29 @@
 
                     toContainer.add(obj);
                     currentScene.update(a => a);
-                    if (e.shiftKey || e.ctrlKey) app.selectMulti(obj, false);
-                    else app.selectSingle(obj);
+                    if (!(e.shiftKey || e.ctrlKey)) $currentSelection.clear();
+                    $currentSelection.addToSelection(obj);
                 })
             });
 
-            if ($currentSelection) root.push({
-                type: "simple",
-                name: "Change label color",
-                click() {
-                    const target = $currentSelection.primary;
-                    openPopupAt(e.clientX, e.clientY, "Label color", ColorPickerPopup, {
-                        initial: target.color,
-                        callback(c: string) {
-                            target.color = c;
-                            currentScene.update(a => a);
-                        }
-                    });
-                },
-            }, {
+            if ($currentSelection.primary) {
+                const target = $currentSelection.primary;
+
+                root.push({
+                    type: "simple",
+                    name: "Change label color",
+                    click() {
+                        openPopupAt(e.clientX, e.clientY, "Label color", ColorPickerPopup, {
+                            initial: target.color,
+                            callback(c: string) {
+                                target.color = c;
+                                currentScene.update(a => a);
+                            }
+                        });
+                    },
+                });
+            }
+            if ($currentSelection.multiple.length > 0) root.push({
                 type: "simple",
                 name: "Delete selection",
                 click() {
@@ -424,7 +428,7 @@
                     }
 
                     removeEntirelyFromContainer($currentSelection.multiple, $currentScene);
-                    app.deselectAll();
+                    $currentSelection.clear();
                     currentScene.update(a => a);
                 },
             });
