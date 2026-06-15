@@ -17,6 +17,6 @@
         "mp4-muxer": "^5.2.2"
     },
     "devDependencies": {
-        "typescript": "^5.9.3"
+        "typescript": "^6.0.3"
     }
 }
