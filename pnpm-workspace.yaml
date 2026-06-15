@@ -1,4 +1,7 @@
 packages:
-- 'nahara-motion'
-- 'nahara-motion-ui'
-- 'nahara-motion-video'
+  - 'nahara-motion'
+  - 'nahara-motion-ui'
+  - 'nahara-motion-video'
+allowBuilds:
+  esbuild: set this to true or false
+  svelte-preprocess: set this to true or false
