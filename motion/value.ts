@@ -275,7 +275,7 @@ export function evalType(options: EvalOptions<ValueType<unknown>>): EvalResult<V
         case "conditional": {
             const condition = evalType({ ...options, expression: expression.condition });
             const ifTrue = evalType({ ...options, expression: expression.ifTrue });
-            const ifFalse = evalType({ ...options, expression: expression.ifTrue });
+            const ifFalse = evalType({ ...options, expression: expression.ifFalse });
             if (condition.type != "success") return condition;
             if (ifTrue.type != "success") return ifTrue;
             if (ifFalse.type != "success") return ifFalse;
@@ -483,10 +483,7 @@ export function evalValue(options: EvalOptions<Value<unknown>>): EvalResult<Valu
             }
 
             return {
-                ...evalValue({
-                    ...options,
-                    expression: condition.value.data ? expression.ifTrue : expression.ifFalse,
-                }),
+                ...evalValue({ ...options, expression: condition.value.data ? expression.ifTrue : expression.ifFalse }),
                 expression,
             };
         }
