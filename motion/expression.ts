@@ -500,32 +500,41 @@ function matchConditional(stream: TokenStream<Token>): Expression | null {
     const { start } = iif;
     if (iif.type != "keyword" || iif.keyword != "if") return null;
 
-    const condition = matchExpression(stream);
+    const fork = stream.fork();
+    const condition = matchExpression(fork);
 
     if (condition == null) {
         const { end } = iif;
         return { type: "error", start: start, end, error: ExpressionError.UnexpectedToken };
+    } else {
+        fork.join();
     }
 
-    const ifTrue = matchExpression(stream);
+    const ifTrue = matchExpression(fork);
     if (ifTrue?.type == "error") return condition;
 
     if (ifTrue == null) {
         const { end } = condition;
         return { type: "error", start, end, error: ExpressionError.UnexpectedToken };
+    } else {
+        fork.join();
     }
 
-    const eelse = stream.next();
+    const eelse = fork.next();
 
     if (eelse.type != "keyword" || eelse.keyword != "else") {
         const { start, end } = eelse;
         return { type: "error", start, end, error: ExpressionError.UnexpectedToken };
+    } else {
+        fork.join();
     }
 
-    const ifFalse = matchExpression(stream);
+    const ifFalse = matchExpression(fork);
 
     if (ifFalse == null) {
         return { type: "error", start: iif.start, end: ifTrue.end, error: ExpressionError.UnexpectedToken };
+    } else {
+        fork.join();
     }
 
     const { end } = ifFalse;
