@@ -14,6 +14,6 @@ For details on the decision to choose different license for each component,
 refer to [this page][why-licenses].
 
 [engine-license]: ./motion/LICENSE
-[editor-license]: ./motion-web/LICENSE
+[editor-license]: ./motion-editor/LICENSE
 [manual-license]: ./docs/LICENSE
 [why-licenses]: ./docs/bonus/why-licenses.md
