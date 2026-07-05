@@ -70,13 +70,16 @@
                 <IconLabel type="notice" />
             </div>
         </div>
-        <div class="tooltip" id="validation-tooltip" role="tooltip" popover="manual" bind:this={tooltip}>
-            <div class="label">
-                <TextLabel>{validation.message}</TextLabel>
-            </div>
-        </div>
     {/if}
 </div>
+
+{#if validation != null}
+    <div class="tooltip" id="validation-tooltip" role="tooltip" popover="manual" bind:this={tooltip}>
+        <div class="label">
+            <TextLabel>{validation.message}</TextLabel>
+        </div>
+    </div>
+{/if}
 
 <style>
     .text-field {
