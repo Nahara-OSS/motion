@@ -1,0 +1,25 @@
+{
+    "name": "@nahara/motion",
+    "version": "1.0.0",
+    "fmt": {
+        "lineWidth": 120,
+        "indentWidth": 4
+    },
+    "license": "MIT",
+    "compilerOptions": {
+        "isolatedDeclarations": true,
+        "lib": [
+            "dom",
+            "esnext",
+            "deno.ns",
+            "deno.unstable"
+        ]
+    },
+    "exports": {
+        ".": "./mod.ts",
+        "./factory": "./factory/mod.ts"
+    },
+    "imports": {
+        "@img/png": "jsr:@img/png@^0.1.6"
+    }
+}

@@ -1,0 +1,19 @@
+{
+    "license": "GPL-3.0-or-later",
+    "compilerOptions": {
+        "lib": [
+            "dom",
+            "esnext"
+        ]
+    },
+    "fmt": {
+        "lineWidth": 120,
+        "indentWidth": 4
+    },
+    "imports": {
+        "@img/png": "jsr:@img/png@^0.1.6",
+        "@nahara/motion": "../motion/mod.ts",
+        "@nahara/motion/core-plugin": "../motion/impl/mod.ts",
+        "@std/media-types": "jsr:@std/media-types@^1.1.0"
+    }
+}
