@@ -179,7 +179,6 @@ The syntax follows Nahara's Motion expression language.
                                 {@render functionSignature(error.from, signature)}
                             {/each}
                         </div>
-                        vec3()
                     {/if}
                 {/if}
             </div>
