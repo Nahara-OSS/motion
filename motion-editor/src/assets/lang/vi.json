@@ -65,5 +65,39 @@
     "expression.error.eval.type-mismatch.string": "Bạn có thể đổi giá trị sang kiểu xâu ký tự với string():",
     "expression.error.eval.type-mismatch.boolean": "Bạn có thể đổi giá trị sang kiểu đúng sai với boolean():",
     "expression.error.eval.no-binary-operator": "Không thể sử dụng biểu thức nhị phân %s cho kiểu %s và %s",
-    "expression.error.eval.no-unary-operator": "Không thể sử dụng biểu thức đơn phân %s cho kiểu %s"
+    "expression.error.eval.no-unary-operator": "Không thể sử dụng biểu thức đơn phân %s cho kiểu %s",
+    "expression.noDocs": "(không có tài liệu)",
+    "expression.type.string": "Một chuỗi ký tự.",
+    "expression.type.string.substr": [
+        "Cắt xâu ký tự.",
+        "Dạng hàm đầu tiên dùng để cắt từ vị trí từ tham số đến hết xâu. Dạng thứ hai cắt từ vị trí từ tham số thứ nhất đến vị trí từ tham số thứ hai."
+    ],
+    "expression.type.string.toUpper": "Chuyển toàn bộ ký tự sang chữ hoa.",
+    "expression.type.string.toLower": "Chuyển toàn bộ ký tự sang chữ thường.",
+    "expression.type.string.trim": "Bỏ dấu cách khỏi đầu và cuối xâu ký tự.",
+    "expression.type.string.trimStart": "Bỏ dấu cách khỏi đầu xâu ký tự.",
+    "expression.type.string.trimEnd": "Bỏ dấu cách khỏi cuối xâu ký tự.",
+    "expression.type.string.padStart": [
+        "Chèn ký tự ở đầu xâu cho đến khi độ dài xâu bằng với giá trị của tham số.",
+        "Dạng hàm đầu tiên chỉ thêm dấu cách. Dạng hàm thứ hai sử dụng tham số thứ hai làm \"họa tiết\" để chèn."
+    ],
+    "expression.type.string.padEnd": [
+        "Chèn ký tự ở cuối xâu cho đến khi độ dài xâu bằng với giá trị của tham số.",
+        "Dạng hàm đầu tiên chỉ thêm dấu cách. Dạng hàm thứ hai sử dụng tham số thứ hai làm \"họa tiết\" để chèn."
+    ],
+    "expression.type.number": "Một giá trị số thập phân.",
+    "expression.type.boolean": "Một giá trị mang trạng thái đúng hoặc sai.",
+    "expression.type.vec2": [
+        "Véc-tơ hai chiều.",
+        "Có thể sử dụng \"hoán vị\" (swizzling) để tạo ra véc-tơ mới bằng cách sử dụng hai hoặc nhiều tên phần từ dưới dạng thuộc tính của véc-tơ, ví dụ như 'v.yx' hoặc 'x.xyx'"
+    ],
+    "expression.type.vec3": [
+        "Véc-tơ ba chiều.",
+        "Có thể sử dụng \"hoán vị\" (swizzling) để tạo ra véc-tơ mới bằng cách sử dụng hai hoặc nhiều tên phần từ dưới dạng thuộc tính của véc-tơ, ví dụ như 'v.xy' hoặc 'x.zyx'"
+    ],
+    "expression.type.length": "Tính độ dài véc-tơ.",
+    "expression.type.dot": "Tính tích vô hướng của véc-tơ.",
+    "expression.type.cross": "Tính tích có hướng (tích chéo) của véc-tơ.",
+    "expression.type.rgb": "Chuyển đổi giá trị đỏ, xanh lục và xanh lam sang véc-tơ ba chiều. Mỗi kênh màu được ép giá trị trong khoảng từ 0 đến 255.",
+    "expression.type.hsl": "Chuyển đổi giá trị tông màu, độ bão hòa và độ sáng sang véc-tơ ba chiều."
 }

@@ -9,6 +9,7 @@ The syntax follows Nahara's Motion expression language.
     import * as motion from "@nahara/motion";
     import { getKeyboardHandler } from "../keyboard";
     import Translation from "../util/Translation.svelte";
+    import { getLanguage, translations } from "../i18n";
 
     const {
         value,
@@ -27,6 +28,8 @@ The syntax follows Nahara's Motion expression language.
     } = $props();
 
     const keyboard = getKeyboardHandler();
+    const lang = getLanguage();
+    const pack = $derived(translations[lang()] ?? translations["en-us"]) as Record<string, string | string[]>;
 
     let focused = $state(false);
     let inputBox = $state<HTMLInputElement | null>(null);
@@ -189,7 +192,17 @@ The syntax follows Nahara's Motion expression language.
         {#if evaluatedSelection?.type == "success"}
             <div class="docs">
                 <pre><span class="type">{evaluatedSelection.value.label}</span></pre>
-                <p>(no documentation)</p>
+                {#if pack[`expression.type.${evaluatedSelection.value.label}`] != null}
+                    {#if typeof pack[`expression.type.${evaluatedSelection.value.label}`] == "string"}
+                        <p>{pack[`expression.type.${evaluatedSelection.value.label}`]}</p>
+                    {:else}
+                        {#each pack[`expression.type.${evaluatedSelection.value.label}`] as line}
+                            <p>{line}</p>
+                        {/each}
+                    {/if}
+                {:else}
+                    <p><Translation key="expression.noDocs" /></p>
+                {/if}
                 {#if evaluatedSelection.value.unaryOps.size > 0}
                     <div class="code">
                         {#each evaluatedSelection.value.unaryOps as [op, sig]}
@@ -324,6 +337,7 @@ The syntax follows Nahara's Motion expression language.
             border: 1px solid #9f9f9f;
             box-sizing: border-box;
             background-color: #ffffff;
+            max-width: 30rem;
 
             > .separator {
                 background-color: #dfdfdf;

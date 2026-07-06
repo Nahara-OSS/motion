@@ -65,5 +65,39 @@
     "expression.error.eval.type-mismatch.string": "You may cast the value to number with string():",
     "expression.error.eval.type-mismatch.boolean": "You may cast the value to number with boolean():",
     "expression.error.eval.no-binary-operator": "Cannot use %s on %s and %s",
-    "expression.error.eval.no-unary-operator": "Cannot use %s on %s"
+    "expression.error.eval.no-unary-operator": "Cannot use %s on %s",
+    "expression.noDocs": "(no documentation)",
+    "expression.type.string": "A sequence of characters.",
+    "expression.type.string.substr": [
+        "Take a slice of the string.",
+        "The first variant slice from the provided position all the way to the end. The second variant slice from the 2 provided start and end positions respectively."
+    ],
+    "expression.type.string.toUpper": "Convert all characters to uppercase.",
+    "expression.type.string.toLower": "Convert all characters to lowercase.",
+    "expression.type.string.trim": "Remove whitespaces from both ends of the string.",
+    "expression.type.string.trimStart": "Remove whitespaces from the start of the string.",
+    "expression.type.string.trimEnd": "Remove whitespaces from the end of the string.",
+    "expression.type.string.padStart": [
+        "Insert characters at the start of the string until the length equals to provided number.",
+        "The first variant insert the spaces. The second variant repeats the pattern provided in second parameter."
+    ],
+    "expression.type.string.padEnd": [
+        "Insert characters at the end of the string until the length equals to provided number.",
+        "The first variant insert the spaces. The second variant repeats the pattern provided in second parameter."
+    ],
+    "expression.type.number": "A decimal value.",
+    "expression.type.boolean": "A value that have 2 states: either true or false.",
+    "expression.type.vec2": [
+        "Two-dimension vector.",
+        "Swizzling is allowed by using a combination of 'x' and 'y', such as 'v.yx' to reverse the vector, or 'v.xxx' to create 3D vector."
+    ],
+    "expression.type.vec3": [
+        "Three-dimension vector.",
+        "Swizzling is allowed by using a combination of 'x', 'y' and 'z', such as 'v.zyx' to reverse the vector, or 'v.xy' to create 2D vector."
+    ],
+    "expression.type.length": "Get the length of a vector.",
+    "expression.type.dot": "Calcualte dot product of 2 vectors.",
+    "expression.type.cross": "Calculate cross product of 2 three-dimension vectors.",
+    "expression.type.rgb": "Convert red, green and blue values to 3D vector respective to the parameters. Each channel is clamped between 0 and 255.",
+    "expression.type.hsl": "Convert hue (0 to 360), saturation (0 to 1) and lightness (0 to 1) to 3D vector."
 }
