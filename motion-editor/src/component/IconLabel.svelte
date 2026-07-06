@@ -52,6 +52,9 @@
     {:else if type == "undo"}
         <path d="M6,6 L9,6 A1,1,90,0,1,9,13 L4,13" stroke="#000000" fill="none" />
         <path d="M6,4 L6,8 L4,6 Z" stroke="#000000" fill="none" />
+    {:else if type == "redo"}
+        <path d="M10,6 L7,6 A1,1,90,0,0,7,13 L12,13" stroke="#000000" fill="none" />
+        <path d="M10,4 L10,8 L12,6 Z" stroke="#000000" fill="none" />
     {:else if type == "add"}
         <path d="M4,8 L12,8" stroke="#000000" fill="none" />
         <path d="M8,4 8,12" stroke="#000000" fill="none" />
@@ -78,6 +81,7 @@
 <style>
     svg {
         aspect-ratio: 1 / 1;
+        max-width: 2rem;
         height: 100%;
         stroke-width: 1;
     }
