@@ -4,7 +4,7 @@ import deno from "@deno/vite-plugin";
 
 // https://vite.dev/config/
 export default defineConfig({
-    base: "/motion/",
+    base: process.env["BASE_PATH"] ?? "/",
     build: {
         license: true,
     },
