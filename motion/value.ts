@@ -140,6 +140,101 @@ export class ValueType<T> {
     }
 }
 
+export interface Value<T> {
+    readonly type: ValueType<T>;
+    readonly data: T;
+}
+
+export interface ValueTypeBuilder<T> {
+    /**
+     * Add new binary operator.
+     *
+     * @param kind Binary operator
+     * @param otherType Type of second value
+     * @param returnType Type of return value
+     * @param apply Apply function
+     */
+    binaryOp<P, R>(
+        kind: BinaryOperator,
+        otherType: ValueType<P>,
+        returnType: ValueType<R>,
+        apply: (a: T, b: P) => R,
+    ): void;
+
+    /**
+     * Add new unary operator.
+     *
+     * @param kind Unary operator
+     * @param returnType Type of return value
+     * @param apply Apply function
+     */
+    unaryOp<R>(
+        kind: UnaryOperator,
+        returnType: ValueType<R>,
+        apply: (value: T) => R,
+    ): void;
+
+    /**
+     * Add new callable signature.
+     *
+     * @param paramTypes Parameter types
+     * @param returnType Return type
+     * @param apply Apply function
+     */
+    callable<P extends unknown[], R>(
+        paramTypes: { [x in keyof P]: ValueType<P[x]> },
+        returnType: ValueType<R>,
+        apply: (self: T, ...params: P) => R,
+    ): void;
+
+    /**
+     * Add new property.
+     *
+     * @param name Name of property
+     * @param type Property value type
+     * @param apply Apply function
+     */
+    property<R>(
+        name: string,
+        type: ValueType<R>,
+        apply: (value: T) => R,
+    ): void;
+
+    /**
+     * Add new property that returns callable value.
+     *
+     * This is a combination of creating new callable value type and adding a new property that yield the value with
+     * that callable type. The following snippet:
+     *
+     * ```typescript
+     * method(name, paramTypes1, returnType1, apply1);
+     * method(name, paramTypes2, returnType2, apply2);
+     * // ...
+     * ```
+     *
+     * is the equivalent of the following snippet:
+     *
+     * ```typescript
+     * property(name, new ValueType<T>(({ callable }) => {
+     *     callable(paramTypes1, returnType1, apply1);
+     *     callable(paramTypes2, returnType2, apply2);
+     *     // ...
+     * }), v => v);
+     * ```
+     *
+     * @param name Name of property
+     * @param paramTypes Parameter types
+     * @param returnType Return type
+     * @param apply Apply function
+     */
+    method<P extends unknown[], R>(
+        name: string,
+        paramTypes: { [x in keyof P]: ValueType<P[x]> },
+        returnType: ValueType<R>,
+        apply: (self: T, ...params: P) => R,
+    ): void;
+}
+
 /**
  * Evaluate value type from expression.
  *
@@ -520,101 +615,6 @@ export type EvalResult<T> =
             )
         )
     );
-
-export interface Value<T> {
-    readonly type: ValueType<T>;
-    readonly data: T;
-}
-
-export interface ValueTypeBuilder<T> {
-    /**
-     * Add new binary operator.
-     *
-     * @param kind Binary operator
-     * @param otherType Type of second value
-     * @param returnType Type of return value
-     * @param apply Apply function
-     */
-    binaryOp<P, R>(
-        kind: BinaryOperator,
-        otherType: ValueType<P>,
-        returnType: ValueType<R>,
-        apply: (a: T, b: P) => R,
-    ): void;
-
-    /**
-     * Add new unary operator.
-     *
-     * @param kind Unary operator
-     * @param returnType Type of return value
-     * @param apply Apply function
-     */
-    unaryOp<R>(
-        kind: UnaryOperator,
-        returnType: ValueType<R>,
-        apply: (value: T) => R,
-    ): void;
-
-    /**
-     * Add new callable signature.
-     *
-     * @param paramTypes Parameter types
-     * @param returnType Return type
-     * @param apply Apply function
-     */
-    callable<P extends unknown[], R>(
-        paramTypes: { [x in keyof P]: ValueType<P[x]> },
-        returnType: ValueType<R>,
-        apply: (self: T, ...params: P) => R,
-    ): void;
-
-    /**
-     * Add new property.
-     *
-     * @param name Name of property
-     * @param type Property value type
-     * @param apply Apply function
-     */
-    property<R>(
-        name: string,
-        type: ValueType<R>,
-        apply: (value: T) => R,
-    ): void;
-
-    /**
-     * Add new property that returns callable value.
-     *
-     * This is a combination of creating new callable value type and adding a new property that yield the value with
-     * that callable type. The following snippet:
-     *
-     * ```typescript
-     * method(name, paramTypes1, returnType1, apply1);
-     * method(name, paramTypes2, returnType2, apply2);
-     * // ...
-     * ```
-     *
-     * is the equivalent of the following snippet:
-     *
-     * ```typescript
-     * property(name, new ValueType<T>(({ callable }) => {
-     *     callable(paramTypes1, returnType1, apply1);
-     *     callable(paramTypes2, returnType2, apply2);
-     *     // ...
-     * }), v => v);
-     * ```
-     *
-     * @param name Name of property
-     * @param paramTypes Parameter types
-     * @param returnType Return type
-     * @param apply Apply function
-     */
-    method<P extends unknown[], R>(
-        name: string,
-        paramTypes: { [x in keyof P]: ValueType<P[x]> },
-        returnType: ValueType<R>,
-        apply: (self: T, ...params: P) => R,
-    ): void;
-}
 
 export const NumberType: ValueType<number> = new ValueType(({ binaryOp, unaryOp }) => {
     binaryOp("+", NumberType, NumberType, (a, b) => a + b);
