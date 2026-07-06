@@ -23,6 +23,7 @@
     import Popover from "./component/Popover.svelte";
     import Translation from "./util/Translation.svelte";
     import { setLanguage, type Language } from "./i18n";
+    import { Keybind } from "./keyboard";
 
     let aboutMotionDialog = $state(false);
 
@@ -358,11 +359,13 @@
                 </SimpleMenu>
                 <SimpleMenu name={{ translated: "window" }}>
                     {#each Object.keys(defaultPanelStates) as (keyof PanelMap)[] as type (type)}
-                        <SimpleMenu
-                            name={{ translated: `window.${type}` }}
-                            onClick={() => openNewWindow(defaultPanelStates[type])}
-                            keys={$keybind.window[type]}
-                        />
+                        {#if type != "debug" || import.meta.env.DEV}
+                            <SimpleMenu
+                                name={{ translated: `window.${type}` }}
+                                onClick={() => openNewWindow(defaultPanelStates[type])}
+                                keys={$keybind.window[type as keyof Keybind["window"]] ?? []}
+                            />
+                        {/if}
                     {/each}
                 </SimpleMenu>
                 <SimpleMenu name={{ translated: "help" }}>

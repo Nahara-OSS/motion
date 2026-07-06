@@ -1,4 +1,5 @@
 <script lang="ts">
+    import DebugPanel from "./DebugPanel.svelte";
     import ExplorerPanel from "./ExplorerPanel.svelte";
     import HistoryPanel from "./HistoryPanel.svelte";
     import OutlinePanel from "./OutlinePanel.svelte";
@@ -25,4 +26,6 @@
     <SettingsPanel panelContent={state} onContentChange={(updater) => onStateChange(updater as any)} />
 {:else if state.type == "viewport"}
     <ViewportPanel />
+{:else if state.type == "debug"}
+    <DebugPanel />
 {/if}

@@ -22,7 +22,7 @@ function swizzle<T, R extends readonly number[]>(
         property(prefix, returnType, (self) => {
             const value = indices.map((i) => getter(self, i));
             return value as unknown as R;
-        });
+        }).hideInDocs();
     }
 
     applyRecursive("");

@@ -17,7 +17,7 @@
         "moduleDetection": "force",
         "paths": {
             "@nahara/motion": ["../motion/mod.ts"],
-            "@nahara/motion/core-plugin": ["../motion/impl/mod.ts"]
+            "@nahara/motion/factory": ["../motion/factory/mod.ts"]
         }
     },
     "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte"]

@@ -26,6 +26,13 @@ export interface PanelMap {
      * Viewport.
      */
     viewport: object;
+
+    /**
+     * Debug panel.
+     *
+     * This panel will only shows up during development.
+     */
+    debug: object;
 }
 
 export const defaultPanelStates: Record<keyof PanelMap, PanelState> = {
@@ -49,6 +56,10 @@ export const defaultPanelStates: Record<keyof PanelMap, PanelState> = {
 
     viewport: {
         type: "viewport",
+    },
+
+    debug: {
+        type: "debug",
     },
 } satisfies { [x in keyof PanelMap]: { readonly type: x } & PanelMap[x] };
 

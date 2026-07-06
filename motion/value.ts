@@ -11,17 +11,21 @@
 
 import type { BinaryOperator, Expression, ExpressionError, UnaryOperator } from "./expression.ts";
 
-export interface BinarySignature<T> {
+export interface ValueTypeComponent {
+    readonly hideInDocs: boolean;
+}
+
+export interface BinarySignature<T> extends ValueTypeComponent {
     readonly type: ValueType<unknown>;
     readonly apply: (a: T, b: unknown) => unknown;
 }
 
-export interface UnarySignature<T> {
+export interface UnarySignature<T> extends ValueTypeComponent {
     readonly type: ValueType<unknown>;
     readonly apply: (a: T) => unknown;
 }
 
-export interface CallableSignature<T> {
+export interface CallableSignature<T> extends ValueTypeComponent {
     readonly paramTypes: ValueType<unknown>[];
     readonly returnType: ValueType<unknown>;
     readonly apply: (self: T, ...params: unknown[]) => unknown;
@@ -54,24 +58,74 @@ export class ValueType<T> {
 
             const binaryOp: ValueTypeBuilder<T>["binaryOp"] = (kind, otherType, returnType, apply) => {
                 const list = internals.binaryOps.getOrInsertComputed(kind, () => new Map());
-                list.set(otherType as ValueType<unknown>, { type: returnType, apply } as BinarySignature<T>);
+                const sig = { hideInDocs: false, type: returnType, apply };
+
+                const settings = {
+                    hideInDocs: () => {
+                        sig.hideInDocs = true;
+                        return settings;
+                    },
+                };
+
+                list.set(otherType as ValueType<unknown>, sig as BinarySignature<T>);
+                return settings;
             };
 
             const unaryOp: ValueTypeBuilder<T>["unaryOp"] = (kind, returnType, apply) => {
-                internals.unaryOps.set(kind, { type: returnType, apply } as UnarySignature<T>);
+                const sig = { hideInDocs: false, type: returnType, apply };
+
+                const settings = {
+                    hideInDocs: () => {
+                        sig.hideInDocs = true;
+                        return settings;
+                    },
+                };
+
+                internals.unaryOps.set(kind, sig as UnarySignature<T>);
+                return settings;
             };
 
             const property: ValueTypeBuilder<T>["property"] = (name, type, apply) => {
-                internals.properties.set(name, { type, apply } as UnarySignature<T>);
+                const sig = { hideInDocs: false, type, apply };
+
+                const settings = {
+                    hideInDocs: () => {
+                        sig.hideInDocs = true;
+                        return settings;
+                    },
+                };
+
+                internals.properties.set(name, sig as UnarySignature<T>);
+                return settings;
             };
 
             const callable: ValueTypeBuilder<T>["callable"] = (paramTypes, returnType, apply) => {
-                internals.callables.push({ paramTypes, returnType, apply } as CallableSignature<T>);
+                const sig = { hideInDocs: false, paramTypes, returnType, apply };
+
+                const settings = {
+                    hideInDocs: () => {
+                        sig.hideInDocs = true;
+                        return settings;
+                    },
+                };
+
+                internals.callables.push(sig as CallableSignature<T>);
+                return settings;
             };
 
             const method: ValueTypeBuilder<T>["method"] = (name, paramTypes, returnType, apply) => {
                 const list = methods.getOrInsert(name, []);
-                list.push({ paramTypes, returnType, apply } as CallableSignature<T>);
+                const sig = { hideInDocs: false, paramTypes, returnType, apply };
+
+                const settings = {
+                    hideInDocs: () => {
+                        sig.hideInDocs = true;
+                        return settings;
+                    },
+                };
+
+                list.push(sig as CallableSignature<T>);
+                return settings;
             };
 
             this.defer({
@@ -162,7 +216,7 @@ export interface ValueTypeBuilder<T> {
         otherType: ValueType<P>,
         returnType: ValueType<R>,
         apply: (a: T, b: P) => R,
-    ): void;
+    ): ValueTypeComponentSettings;
 
     /**
      * Add new unary operator.
@@ -175,7 +229,7 @@ export interface ValueTypeBuilder<T> {
         kind: UnaryOperator,
         returnType: ValueType<R>,
         apply: (value: T) => R,
-    ): void;
+    ): ValueTypeComponentSettings;
 
     /**
      * Add new callable signature.
@@ -188,7 +242,7 @@ export interface ValueTypeBuilder<T> {
         paramTypes: { [x in keyof P]: ValueType<P[x]> },
         returnType: ValueType<R>,
         apply: (self: T, ...params: P) => R,
-    ): void;
+    ): ValueTypeComponentSettings;
 
     /**
      * Add new property.
@@ -201,7 +255,7 @@ export interface ValueTypeBuilder<T> {
         name: string,
         type: ValueType<R>,
         apply: (value: T) => R,
-    ): void;
+    ): ValueTypeComponentSettings;
 
     /**
      * Add new property that returns callable value.
@@ -235,7 +289,16 @@ export interface ValueTypeBuilder<T> {
         paramTypes: { [x in keyof P]: ValueType<P[x]> },
         returnType: ValueType<R>,
         apply: (self: T, ...params: P) => R,
-    ): void;
+    ): ValueTypeComponentSettings;
+}
+
+export interface ValueTypeComponentSettings {
+    /**
+     * Hide the component from inline docs.
+     *
+     * Used by swizzle generator to hide the generated swizzle properties for vectors.
+     */
+    hideInDocs(): this;
 }
 
 /**
