@@ -31,7 +31,7 @@ function swizzle<T, R extends readonly number[]>(
 export type Vec2 = readonly [x: number, y: number];
 export type Vec3 = readonly [x: number, y: number, z: number];
 
-export const Vec2Type: motion.value.ValueType<Vec2> = new motion.value.ValueType(({
+export const Vec2Type: motion.value.ValueType<Vec2> = new motion.value.ValueType("vec2", ({
     binaryOp,
     unaryOp,
     property,
@@ -57,7 +57,7 @@ export const Vec2Type: motion.value.ValueType<Vec2> = new motion.value.ValueType
     swizzle("xy", Vec3Type, 3, property, (self, index) => self[index]);
 });
 
-export const Vec3Type: motion.value.ValueType<Vec3> = new motion.value.ValueType(({
+export const Vec3Type: motion.value.ValueType<Vec3> = new motion.value.ValueType("vec3", ({
     binaryOp,
     unaryOp,
     property,
@@ -84,13 +84,13 @@ export const Vec3Type: motion.value.ValueType<Vec3> = new motion.value.ValueType
     swizzle("xyz", Vec3Type, 3, property, (self, index) => self[index]);
 });
 
-export const vec2: motion.value.Value<void> = new motion.value.ValueType<void>(({ callable }) => {
+export const vec2: motion.value.Value<void> = new motion.value.ValueType<void>("vec2", ({ callable }) => {
     callable([], Vec2Type, () => [0, 0] as const);
     callable([NumberType], Vec2Type, (_, x) => [x, x] as const);
     callable([NumberType, NumberType], Vec2Type, (_, x, y) => [x, y] as const);
 }).of();
 
-export const vec3: motion.value.Value<void> = new motion.value.ValueType<void>(({ callable }) => {
+export const vec3: motion.value.Value<void> = new motion.value.ValueType<void>("vec3", ({ callable }) => {
     callable([], Vec3Type, () => [0, 0, 0] as const);
     callable([NumberType], Vec3Type, (_, x) => [x, x, x] as const);
     callable([Vec2Type, NumberType], Vec3Type, (_, [x, y], z) => [x, y, z] as const);

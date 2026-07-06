@@ -37,7 +37,10 @@ interface ValueTypeInternals<T> {
 export class ValueType<T> {
     #cached: ValueTypeInternals<T> | null = null;
 
-    constructor(private readonly defer: (builder: ValueTypeBuilder<T>) => unknown) {}
+    constructor(
+        public readonly label: string,
+        private readonly defer: (builder: ValueTypeBuilder<T>) => unknown,
+    ) {}
 
     #getInternals(): ValueTypeInternals<T> {
         if (this.#cached == null) {
@@ -80,7 +83,7 @@ export class ValueType<T> {
             });
 
             for (const [name, signatures] of methods) {
-                const type = new ValueType(({ callable }) => {
+                const type = new ValueType(this.label + "." + name, ({ callable }) => {
                     for (const { paramTypes, returnType, apply } of signatures) {
                         // deno-lint-ignore no-explicit-any
                         callable(paramTypes, returnType, apply as any);
@@ -616,7 +619,7 @@ export type EvalResult<T> =
         )
     );
 
-export const NumberType: ValueType<number> = new ValueType(({ binaryOp, unaryOp }) => {
+export const NumberType: ValueType<number> = new ValueType("number", ({ binaryOp, unaryOp }) => {
     binaryOp("+", NumberType, NumberType, (a, b) => a + b);
     binaryOp("-", NumberType, NumberType, (a, b) => a - b);
     binaryOp("*", NumberType, NumberType, (a, b) => a * b);
@@ -632,7 +635,7 @@ export const NumberType: ValueType<number> = new ValueType(({ binaryOp, unaryOp 
     unaryOp("-", NumberType, (v) => -v);
 });
 
-export const BooleanType: ValueType<boolean> = new ValueType(({ binaryOp, unaryOp }) => {
+export const BooleanType: ValueType<boolean> = new ValueType("boolean", ({ binaryOp, unaryOp }) => {
     binaryOp("&&", BooleanType, BooleanType, (a, b) => a && b);
     binaryOp("||", BooleanType, BooleanType, (a, b) => a || b);
     binaryOp("==", BooleanType, BooleanType, (a, b) => a == b);
@@ -641,7 +644,7 @@ export const BooleanType: ValueType<boolean> = new ValueType(({ binaryOp, unaryO
     unaryOp("!", BooleanType, (v) => !v);
 });
 
-export const StringType: ValueType<string> = new ValueType(({ binaryOp, property, method }) => {
+export const StringType: ValueType<string> = new ValueType("string", ({ binaryOp, property, method }) => {
     binaryOp("+", StringType, StringType, (a, b) => a + b);
     binaryOp("==", StringType, BooleanType, (a, b) => a == b);
     binaryOp("!=", StringType, BooleanType, (a, b) => a != b);
