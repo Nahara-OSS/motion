@@ -10,9 +10,13 @@
 {#if key.code.startsWith("Key")}
     {key.code.substring(3)}
 {:else if key.code == "ArrowLeft"}
-    &lt;-
+    &leftarrow;
 {:else if key.code == "ArrowRight"}
-    -&gt;
+    &rightarrow;
+{:else if key.code == "ArrowUp"}
+    &uparrow;
+{:else if key.code == "ArrowDown"}
+    &downarrow;
 {:else if key.code == "Escape"}
     Esc
 {:else if key.code == "Slash"}
