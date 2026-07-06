@@ -107,10 +107,6 @@
         session.revertScene(entry);
     }
 
-    function cut() {}
-    function copy() {}
-    function paste() {}
-
     function playPause() {
         if ($sceneSession == null) return;
         const session = $sceneSession;
@@ -271,6 +267,10 @@
                         keys={$keybind.file.closeProject}
                     />
                 </SimpleMenu>
+
+                <!-- Global edit menu -->
+                <!-- Commands like copy, cut, paste and delete are context-dependent -->
+                <!-- User will have to hover their pointer on panel to use those commands -->
                 <SimpleMenu name={{ translated: "edit" }}>
                     <SimpleMenu
                         name={{ translated: "edit.undo" }}
@@ -284,26 +284,8 @@
                         onClick={redo}
                         keys={$keybind.edit.redo}
                     />
-                    <MenuSeparator />
-                    <SimpleMenu
-                        name={{ translated: "edit.cut" }}
-                        enabled={$sceneSession != null}
-                        onClick={cut}
-                        keys={$keybind.edit.cut}
-                    />
-                    <SimpleMenu
-                        name={{ translated: "edit.copy" }}
-                        enabled={$sceneSession != null}
-                        onClick={copy}
-                        keys={$keybind.edit.copy}
-                    />
-                    <SimpleMenu
-                        name={{ translated: "edit.paste" }}
-                        enabled={$sceneSession != null}
-                        onClick={paste}
-                        keys={$keybind.edit.paste}
-                    />
                 </SimpleMenu>
+
                 <SimpleMenu name={{ translated: "playback" }}>
                     <SimpleMenu
                         name={{ translated: "playback.playPause" }}
@@ -357,6 +339,7 @@
                         keys={$keybind.playback.seekToNextMarker}
                     />
                 </SimpleMenu>
+
                 <SimpleMenu name={{ translated: "window" }}>
                     {#each Object.keys(defaultPanelStates) as (keyof PanelMap)[] as type (type)}
                         {#if type != "debug" || import.meta.env.DEV}
@@ -368,6 +351,7 @@
                         {/if}
                     {/each}
                 </SimpleMenu>
+
                 <SimpleMenu name={{ translated: "help" }}>
                     <SimpleMenu
                         name={{ translated: "help.userManual" }}

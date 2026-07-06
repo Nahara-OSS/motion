@@ -13,6 +13,7 @@
     const {
         name,
         enabled = true,
+        keybindEnabled = true,
         toggled = false,
         dynamic = false,
         keys = [],
@@ -22,7 +23,23 @@
         children,
     }: {
         name: string | { translated: string };
+
+        /**
+         * Enable state.
+         *
+         * Disabling the menu button will prevent user from clicking the button and disabling keybind, even though
+         * `keybindEnabled` is `true`.
+         */
         enabled?: boolean;
+
+        /**
+         * Keybind enable state.
+         *
+         * The button remains clickable even if this property is `false`, but the keybind will not be registered to
+         * global keyboard handler.
+         */
+        keybindEnabled?: boolean;
+
         toggled?: boolean;
         dynamic?: boolean;
         keys?: readonly KeyCombination[];
@@ -72,5 +89,5 @@
 {/if}
 
 {#if keys.length > 0 && onClick}
-    <KeybindHandler {enabled} {keys} onKeyDown={onClick} />
+    <KeybindHandler enabled={enabled && keybindEnabled} {keys} onKeyDown={onClick} />
 {/if}

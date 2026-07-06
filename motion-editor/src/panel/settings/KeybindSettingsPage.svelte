@@ -141,7 +141,7 @@
                                     <TextLabel>Click to add key combination</TextLabel>{/if}
                             {/snippet}
                             {#if ($keybind as any)[categoryId][actionId].length == 0}
-                                <TextLabel>(no key combinations)</TextLabel>
+                                <TextLabel style="grayed">(no key combinations)</TextLabel>
                             {:else}
                                 {#each ($keybind as any)[categoryId][actionId] as key}
                                     <KeybindLabel>

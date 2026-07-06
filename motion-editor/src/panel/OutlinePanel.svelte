@@ -14,6 +14,7 @@
     import NewCompositionDialog from "../dialog/NewCompositionDialog.svelte";
     import { object, scene } from "@nahara/motion";
     import Button from "../component/Button.svelte";
+    import Translation from "../util/Translation.svelte";
 
     const {
         panelContent,
@@ -26,9 +27,12 @@
     let newCompositionDialog = $state(false);
 
     const editor = getEditorSession();
+    const keybind = editor.keybind;
+    const objectTypes = organizeObjectTypesToTree(editor.bundle.objectTypes.values());
     const project = editor.project;
     const sceneSession = editor.project.pipe(switchMap((project) => project?.scene ?? of(null)));
     const sceneContent = sceneSession.pipe(switchMap((scene) => scene?.scene$ ?? of(null)));
+    const selectedObjectIds = sceneSession.pipe(switchMap((scene) => scene?.selectedObjectIds ?? of([] as string[])));
 
     const activeCompositionIndex = $derived(
         $sceneContent?.editor?.activeCompositionId != null
@@ -136,10 +140,303 @@
             composition?.label != null ? `Delete "${composition.label}" composition` : "Delete composition",
         );
     }
+
+    function addObject(type: object.ObjectType<unknown, unknown>) {
+        if ($sceneSession == null) return;
+
+        const session = $sceneSession;
+        const selectedObjectIds = session.selectedObjectIds.value;
+        const createdObjectIds: string[] = [];
+
+        session.editScene((scene) => {
+            const newObject = {
+                typeId: type.typeId,
+                reference: null,
+                label: null,
+                startTick: scene.timeline.startTick,
+                endTick: scene.timeline.endTick,
+                visibility: {},
+                state: type.createDefault(),
+                childrenIds: [],
+            };
+
+            if (selectedObjectIds.length == 0) {
+                const newId = crypto.randomUUID();
+                createdObjectIds.push(newId);
+
+                scene = {
+                    ...scene,
+                    objects: {
+                        ...scene.objects,
+                        [newId]: newObject,
+                    },
+                    rootIds: [...scene.rootIds, newId],
+                };
+            } else {
+                for (const parentId of selectedObjectIds) {
+                    const object = scene.objects[parentId];
+                    if (object == null) continue;
+
+                    const newId = crypto.randomUUID();
+                    createdObjectIds.push(newId);
+
+                    scene = {
+                        ...scene,
+                        objects: {
+                            ...scene.objects,
+                            [parentId]: { ...object, childrenIds: [...object.childrenIds, newId] },
+                            [newId]: newObject,
+                        },
+                    };
+                }
+            }
+
+            return scene;
+        }, "Add object");
+
+        session.selectedObjectIds.next(createdObjectIds);
+    }
+
+    function selectObject(objectId: string | null, multiselect: "none" | "pick") {
+        if ($sceneSession == null) return;
+
+        const session = $sceneSession;
+
+        switch (multiselect) {
+            case "none": {
+                session.selectedObjectIds.next(objectId != null ? [objectId] : []);
+                return;
+            }
+
+            case "pick": {
+                if (objectId == null) return;
+                const ids = session.selectedObjectIds.value;
+                const index = ids.indexOf(objectId);
+                if (index == -1) session.selectedObjectIds.next([...ids, objectId]);
+                else session.selectedObjectIds.next([...ids.slice(0, index), ...ids.slice(index + 1)]);
+            }
+        }
+    }
+
+    function selectAll() {
+        if ($sceneSession == null) return;
+        const session = $sceneSession;
+        const ids = Object.keys(session.scene.objects);
+        session.selectedObjectIds.next(ids);
+    }
+
+    function deselectAll() {
+        if ($sceneSession == null) return;
+        const session = $sceneSession;
+        session.selectedObjectIds.next([]);
+    }
+
+    function deleteSelected() {
+        if ($sceneSession == null) return;
+        const session = $sceneSession;
+        const selectedIds = session.selectedObjectIds.value;
+
+        const edit = session.editScene(
+            (scene) => {
+                function deleteId(objectId: string) {
+                    const object = scene.objects[objectId];
+                    if (object == null) return;
+                    for (const id of object.childrenIds) deleteId(id);
+
+                    scene = {
+                        ...scene,
+                        objects: Object.fromEntries(
+                            Object.entries(scene.objects)
+                                .filter(([id]) => id != objectId)
+                                .map(([id, object]) => [
+                                    id,
+                                    {
+                                        ...object,
+                                        childrenIds: object.childrenIds.filter((id) => id != objectId),
+                                    },
+                                ]),
+                        ),
+                        rootIds: scene.rootIds.filter((id) => id != objectId),
+                    };
+                }
+
+                for (const id of selectedIds) deleteId(id);
+                return scene;
+            },
+            selectedIds.length > 1 ? "Delete objects" : "Delete object",
+        );
+
+        if (edit != null) {
+            session.selectedObjectIds.next([]);
+        }
+    }
+
+    function duplicateSelected() {
+        if ($sceneSession == null) return;
+        const session = $sceneSession;
+        const selectedObjectIds = session.selectedObjectIds.value;
+        const createdObjectIds: string[] = [];
+
+        session.editScene(
+            (scene) => {
+                function parentIdOf(objectId: string): string | null {
+                    if (scene.rootIds.includes(objectId)) return null;
+
+                    for (const [parentId, parentObject] of Object.entries(scene.objects)) {
+                        if (parentObject.childrenIds.includes(objectId)) return parentId;
+                    }
+
+                    return null;
+                }
+
+                function cloneAsNewId(objectId: string): string {
+                    const object = scene.objects[objectId];
+                    const newId = crypto.randomUUID();
+                    const childrenIds = object.childrenIds.map(cloneAsNewId);
+
+                    scene = {
+                        ...scene,
+                        objects: {
+                            ...scene.objects,
+                            [newId]: { ...object, childrenIds },
+                        },
+                    };
+
+                    createdObjectIds.push(newId);
+                    return newId;
+                }
+
+                function duplicate(objectId: string) {
+                    const parentId = parentIdOf(objectId);
+                    const newId = cloneAsNewId(objectId);
+
+                    if (parentId == null) {
+                        const childrenIds = scene.rootIds;
+                        const index = childrenIds.indexOf(objectId) + 1;
+
+                        scene = {
+                            ...scene,
+                            rootIds: [...childrenIds.slice(0, index), newId, ...childrenIds.slice(index)],
+                        };
+                    } else {
+                        const childrenIds = scene.objects[parentId].childrenIds;
+                        const index = childrenIds.indexOf(objectId) + 1;
+
+                        scene = {
+                            ...scene,
+                            objects: {
+                                ...scene.objects,
+                                [parentId]: {
+                                    ...scene.objects[parentId],
+                                    childrenIds: [...childrenIds.slice(0, index), newId, ...childrenIds.slice(index)],
+                                },
+                            },
+                        };
+                    }
+                }
+
+                for (const id of selectedObjectIds) duplicate(id);
+                console.log(scene);
+                return scene;
+            },
+            selectedObjectIds.length > 1 ? "Duplicat objects" : "Duplicate object",
+        );
+
+        session.selectedObjectIds.next(createdObjectIds);
+    }
+
+    interface FolderEntry {
+        name: string;
+        folders: FolderEntry[];
+        objectTypes: ObjectTypeEntry[];
+    }
+
+    interface ObjectTypeEntry {
+        name: string;
+        namespace: string;
+        type: object.ObjectType<unknown, unknown>;
+    }
+
+    function organizeObjectTypesToTree(
+        list: Iterable<object.ObjectType<unknown, unknown>>,
+    ): [FolderEntry[], ObjectTypeEntry[]] {
+        const folders: FolderEntry[] = [];
+        const objectTypes: ObjectTypeEntry[] = [];
+
+        for (const objectType of list) {
+            const match = objectType.typeId.match(/([A-Za-z0-9-_]+):([A-Za-z0-9-_/]+)/);
+
+            if (!match) {
+                console.warn(`Object type with ID '${objectType.typeId}' does not follows the convention!`);
+                objectTypes.push({ name: objectType.typeId, namespace: "unknown", type: objectType });
+                continue;
+            }
+
+            const [_, namespace, path] = match;
+            const parts = path.split("/");
+            let currentFolders = folders;
+            let currentObjectTypes = objectTypes;
+
+            for (let i = 0; i < parts.length; i++) {
+                if (i < parts.length - 1) {
+                    let nextFolder = currentFolders.find((f) => f.name == parts[i]);
+
+                    if (nextFolder == null) {
+                        nextFolder = { name: parts[i], folders: [], objectTypes: [] };
+                        currentFolders.push(nextFolder);
+                    }
+
+                    currentFolders = nextFolder.folders;
+                    currentObjectTypes = nextFolder.objectTypes;
+                } else {
+                    currentObjectTypes.push({ name: parts[i], namespace, type: objectType });
+                }
+            }
+        }
+
+        return [folders, objectTypes];
+    }
 </script>
 
 <Panel>
-    {#snippet toolbar()}
+    {#snippet toolbar(keybindEnabled)}
+        <MenuBar>
+            <SimpleMenu name="Add object" dynamic={true}>
+                {@render objectTypeMenu(objectTypes[0], objectTypes[1], "object.group")}
+            </SimpleMenu>
+            <SimpleMenu name={{ translated: "edit" }}>
+                <SimpleMenu
+                    name={{ translated: "edit.duplicate" }}
+                    keys={$keybind.edit.duplicate}
+                    enabled={$sceneContent != null && $selectedObjectIds.length > 0}
+                    {keybindEnabled}
+                    onClick={duplicateSelected}
+                />
+                <MenuSeparator />
+                <SimpleMenu
+                    name={{ translated: "edit.selectAll" }}
+                    keys={$keybind.edit.selectAll}
+                    enabled={$sceneContent != null}
+                    {keybindEnabled}
+                    onClick={selectAll}
+                />
+                <SimpleMenu
+                    name={{ translated: "edit.deselectAll" }}
+                    keys={$keybind.edit.deselectAll}
+                    enabled={$sceneContent != null && $selectedObjectIds.length > 0}
+                    {keybindEnabled}
+                    onClick={deselectAll}
+                />
+                <MenuSeparator />
+                <SimpleMenu
+                    name={{ translated: "edit.delete" }}
+                    keys={$keybind.edit.delete}
+                    enabled={$sceneContent != null && $selectedObjectIds.length > 0}
+                    {keybindEnabled}
+                    onClick={deleteSelected}
+                />
+            </SimpleMenu>
+        </MenuBar>
         <FlexFillLabel />
         <MenuBar>
             <Menu>
@@ -219,8 +516,12 @@
         </MenuBar>
     {/snippet}
     {#if $sceneContent != null && $sceneContent.rootIds.length > 0}
-        <div class="content">
-            {#each $sceneContent.rootIds as objectId (objectId)}
+        <div
+            class="content"
+            role="none"
+            onclick={(e) => (e.target == e.currentTarget ? selectObject(null, "none") : 0)}
+        >
+            {#each $sceneContent.rootIds.toReversed() as objectId (objectId)}
                 {@render objectSnippet(objectId, $sceneContent)}
             {/each}
         </div>
@@ -235,11 +536,46 @@
     {/if}
 </Panel>
 
+{#snippet objectTypeMenu(folders: FolderEntry[], objectTypes: ObjectTypeEntry[], prefix: string)}
+    {#each folders as folder}
+        <Menu>
+            {#snippet label()}
+                <TextLabel><Translation key="{prefix}.{folder.name}" /></TextLabel>
+                <FlexFillLabel />
+                <IconLabel type="drop-right" />
+            {/snippet}
+            {@render objectTypeMenu(folder.folders, folder.objectTypes, `${prefix}.${folder.name}`)}
+        </Menu>
+    {/each}
+    {#if folders.length > 0 && objectTypes.length > 0}
+        <MenuSeparator />
+    {/if}
+    {#each objectTypes as objectType}
+        <Menu enabled={$sceneSession != null} onClick={() => addObject(objectType.type)}>
+            {#snippet label()}
+                <TextLabel><Translation key="object.type.{objectType.type.typeId}" /></TextLabel>
+                <TextLabel style="grayed"><Translation key="object.namespace.{objectType.namespace}" /></TextLabel>
+            {/snippet}
+        </Menu>
+    {/each}
+    {#if folders.length == 0 && objectTypes.length == 0}
+        <SimpleMenu name="(no objects)" enabled={false} />
+    {/if}
+{/snippet}
+
 {#snippet objectSnippet(objectId: string, scene: scene.Scene)}
     <div class="entry">
         <div class="object">
-            <Button style="toolbar">
-                <TextLabel>{scene.objects[objectId].label ?? scene.objects[objectId].typeId}</TextLabel>
+            <Button
+                style="toolbar"
+                toggled={$selectedObjectIds.includes(objectId)}
+                onClick={(e) => selectObject(objectId, e.ctrlKey || e.shiftKey ? "pick" : "none")}
+            >
+                {#if scene.objects[objectId].label != null}
+                    <TextLabel>{scene.objects[objectId].label}</TextLabel>
+                {:else}
+                    <TextLabel><Translation key="object.type.{scene.objects[objectId].typeId}" /></TextLabel>
+                {/if}
             </Button>
             {#if panelContent.composition == "all"}
                 {#each scene.compositions as composition (composition.compositionId)}
@@ -261,11 +597,15 @@
                 </Button>
             {/if}
         </div>
-        <div class="children">
-            {#each scene.objects[objectId].childrenIds as childId (childId)}
-                {@render objectSnippet(childId, scene)}
-            {/each}
-        </div>
+        {#if scene.objects[objectId].childrenIds.length > 0}
+            <div class="children">
+                <!-- Objects in reversed order because higher layer objects are rendered last -->
+                <!-- TODO: Or maybe this should be a settings? -->
+                {#each scene.objects[objectId].childrenIds.toReversed() as childId (childId)}
+                    {@render objectSnippet(childId, scene)}
+                {/each}
+            </div>
+        {/if}
     </div>
 {/snippet}
 
@@ -306,6 +646,7 @@
             }
 
             > .children {
+                position: relative;
                 display: flex;
                 flex-direction: column;
                 flex-shrink: 0;

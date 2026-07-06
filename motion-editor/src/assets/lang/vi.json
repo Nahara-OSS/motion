@@ -12,9 +12,14 @@
     "edit": "Chỉnh sửa",
     "edit.undo": "Hoàn tác",
     "edit.redo": "Làm lại",
-    "edit.cut": "Cắt vào bảng nhớ tạm",
-    "edit.copy": "Sao chép vào bảng nhớ tạm",
-    "edit.paste": "Dán từ bảng nhớ tạm",
+    "edit.cut": "Cắt",
+    "edit.copy": "Sao chép",
+    "edit.paste": "Dán",
+    "edit.duplicate": "Nhân bản",
+    "edit.selectAll": "Chọn tất cả",
+    "edit.deselectAll": "Bỏ chọn tất cả",
+    "edit.delete": "Xóa",
+    "edit.delect.named": "Xóa %s",
     "playback": "Điều khiển phát lại",
     "playback.playPause": "Phát hoặc tạm dừng",
     "playback.playStop": "Phát hoặc dừng hẳn",
@@ -35,5 +40,8 @@
     "workspace.importClipboard": "Nhập từ bảng nhớ tạm",
     "help": "Trợ giúp",
     "help.userManual": "Hướng dẫn sử dụng",
-    "help.aboutMotion": "Thông tin về Nahara Motion"
+    "help.aboutMotion": "Thông tin về Nahara Motion",
+    "object.group.loops": "Lặp",
+    "object.type.nahara:loops/repeat": "Nhân bản đối tượng con",
+    "object.namespace.nahara": "Nahara Motion"
 }

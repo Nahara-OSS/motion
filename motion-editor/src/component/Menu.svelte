@@ -112,7 +112,7 @@
     .menu {
         position-area: right;
         left: calc(anchor(right) + 0.2rem);
-        top: calc(anchor(top) - 0.2rem - 0.5px);
+        top: calc(anchor(top) - 0.2rem - 1px);
         margin: 0;
         border: 0;
         padding: 0;

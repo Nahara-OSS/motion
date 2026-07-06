@@ -9,8 +9,8 @@ export interface ObjectType<S, V = void> {
     /**
      * ID for identifying the type of object.
      *
-     * The ID typically follows the `[A-Za-z-_]:[A-Za-z0-9-_/]` pattern, with the first part of the ID for namespace and
-     * second part for path to object type. For example: `nahara:mesh` and `nahara:mesh/modifiers/line`.
+     * The ID typically follows the `[A-Za-z-_]+:[A-Za-z0-9-_/]+` pattern, with the first part of the ID for 
+     * and second part for path to object type. For example: `nahara:mesh` and `nahara:mesh/modifiers/line`.
      *
      * It is highly recommended to follow the namespace + path pattern for ID, as the path part will be used as
      * suggestion when inserting the object to the tree. For example, if the mesh modifier is meant to be inserted into

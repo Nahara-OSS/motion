@@ -4,7 +4,8 @@ import { RootFolder } from "./files.ts";
 import { Settings } from "./settings.ts";
 import type { WorkspaceState } from "./workspace.ts";
 import type { PanelState } from "./panel/panels.ts";
-import { scene, timing } from "@nahara/motion";
+import { bundle, scene, timing } from "@nahara/motion";
+import * as factory from "@nahara/motion/factory";
 import { Keybind } from "./keyboard.ts";
 
 /**
@@ -19,6 +20,7 @@ export class EditorSession {
     private constructor(
         public readonly appRoot: RootFolder,
         public readonly gpu: GPUDevice,
+        public readonly bundle: bundle.Bundle,
     ) {
     }
 
@@ -39,6 +41,7 @@ export class EditorSession {
         return new EditorSession(
             appRoot,
             gpu,
+            factory.bundle,
         );
     }
 }
@@ -69,6 +72,8 @@ export class SceneSession {
 
     readonly seekhead$: Observable<number>;
     readonly graphicsSeekhead$: Observable<number>;
+
+    readonly selectedObjectIds = new BehaviorSubject<string[]>([]);
 
     constructor(
         public readonly project: ProjectSession,

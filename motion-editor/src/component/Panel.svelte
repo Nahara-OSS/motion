@@ -10,20 +10,35 @@ Panel layout scaffold.
         toolbar,
         children,
     }: {
-        toolbar?: Snippet<[]>;
-        children?: Snippet<[]>;
+        /**
+         * Toolbar snippet.
+         *
+         * The hovered state is meant to be passed to `<SimpleMenu keybindEnabled={hovered}>` or
+         * `<KeybindHandler enabled={hovered}>` to enable key combinations only when user is hovering on the panel.
+         */
+        toolbar?: Snippet<[hovered: boolean]>;
+
+        /**
+         * Snippet for the main content of the panel.
+         *
+         * The hovered state is meant to be passed to `<SimpleMenu keybindEnabled={hovered}>` or
+         * `<KeybindHandler enabled={hovered}>` to enable key combinations only when user is hovering on the panel.
+         */
+        children?: Snippet<[hovered: boolean]>;
     } = $props();
+
+    let hovering = $state<boolean>(false);
 </script>
 
-<div class="panel">
+<div class="panel" role="none" onpointerenter={() => (hovering = true)} onpointerleave={() => (hovering = false)}>
     {#if toolbar}
         <header>
-            {@render toolbar()}
+            {@render toolbar(hovering)}
         </header>
     {/if}
     <main>
         {#if children}
-            {@render children()}
+            {@render children(hovering)}
         {/if}
     </main>
 </div>

@@ -74,6 +74,10 @@ export interface Keybind {
         readonly cut: readonly KeyCombination[];
         readonly copy: readonly KeyCombination[];
         readonly paste: readonly KeyCombination[];
+        readonly duplicate: readonly KeyCombination[];
+        readonly selectAll: readonly KeyCombination[];
+        readonly deselectAll: readonly KeyCombination[];
+        readonly delete: readonly KeyCombination[];
     };
 
     readonly playback: {
@@ -137,6 +141,10 @@ export const Keybind: Keybind = {
         cut: [{ ctrl: true, shift: false, alt: false, code: "KeyX" }],
         copy: [{ ctrl: true, shift: false, alt: false, code: "KeyC" }],
         paste: [{ ctrl: true, shift: false, alt: false, code: "KeyV" }],
+        duplicate: [{ ctrl: true, shift: false, alt: false, code: "KeyD" }],
+        selectAll: [{ ctrl: true, shift: false, alt: false, code: "KeyA" }],
+        deselectAll: [{ ctrl: true, shift: true, alt: false, code: "KeyA" }],
+        delete: [{ ctrl: false, shift: false, alt: false, code: "Delete" }],
     },
 
     playback: {
