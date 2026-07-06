@@ -227,7 +227,7 @@
     {/if}
 </svelte:head>
 
-<div class="app">
+<div class="app" lang={$settings.general.language == "auto" ? navigator.language : $settings.general.language}>
     <header>
         <div class="group start">
             <MenuBar>
