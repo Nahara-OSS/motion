@@ -7,8 +7,11 @@
     import TextLabel from "../component/TextLabel.svelte";
     import { getEditorSession } from "../editor";
     import { devicePixelRatioAsObservable } from "../util/trackZoom";
+    import KeyCombinationName from "../component/KeyCombinationName.svelte";
+    import Translation from "../util/Translation.svelte";
 
     const editor = getEditorSession();
+    const keybind = editor.keybind;
     const graphicsSeekhead = editor.project.pipe(
         switchMap((project) => project?.scene ?? of(null)),
         switchMap((scene) => scene?.graphicsSeekhead$ ?? of(0)),
@@ -46,29 +49,53 @@
     <div class="toolbar">
         <Button style="toolbar" toggled={true}>
             {#snippet tooltip()}
-                <TextLabel>Select</TextLabel>
-                <KeybindLabel>1</KeybindLabel>
+                <TextLabel>
+                    <Translation key="tools.pointer" />
+                </TextLabel>
+                <KeybindLabel>
+                    {#each $keybind.tools.pointer as key}
+                        <KeyCombinationName {key} />
+                    {/each}
+                </KeybindLabel>
             {/snippet}
             <IconLabel type="pointer" />
         </Button>
         <Button style="toolbar">
             {#snippet tooltip()}
-                <TextLabel>Draw shape</TextLabel>
-                <KeybindLabel>2</KeybindLabel>
+                <TextLabel>
+                    <Translation key="tools.shape" />
+                </TextLabel>
+                <KeybindLabel>
+                    {#each $keybind.tools.shape as key}
+                        <KeyCombinationName {key} />
+                    {/each}
+                </KeybindLabel>
             {/snippet}
             <IconLabel type="shapes" />
         </Button>
         <Button style="toolbar">
             {#snippet tooltip()}
-                <TextLabel>Draw path</TextLabel>
-                <KeybindLabel>3</KeybindLabel>
+                <TextLabel>
+                    <Translation key="tools.path" />
+                </TextLabel>
+                <KeybindLabel>
+                    {#each $keybind.tools.path as key}
+                        <KeyCombinationName {key} />
+                    {/each}
+                </KeybindLabel>
             {/snippet}
             <IconLabel type="path" />
         </Button>
         <Button style="toolbar">
             {#snippet tooltip()}
-                <TextLabel>Insert text</TextLabel>
-                <KeybindLabel>4</KeybindLabel>
+                <TextLabel>
+                    <Translation key="tools.text" />
+                </TextLabel>
+                <KeybindLabel>
+                    {#each $keybind.tools.text as key}
+                        <KeyCombinationName {key} />
+                    {/each}
+                </KeybindLabel>
             {/snippet}
             <IconLabel type="text" />
         </Button>

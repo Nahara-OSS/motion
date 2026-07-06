@@ -9,6 +9,8 @@
 {key.shift ? "Shift +" : ""}
 {#if key.code.startsWith("Key")}
     {key.code.substring(3)}
+{:else if key.code.startsWith("Digit")}
+    {key.code.substring(5)}
 {:else if key.code == "ArrowLeft"}
     &leftarrow;
 {:else if key.code == "ArrowRight"}

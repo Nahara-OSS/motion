@@ -80,6 +80,13 @@ export interface Keybind {
         readonly delete: readonly KeyCombination[];
     };
 
+    readonly tools: {
+        readonly pointer: readonly KeyCombination[];
+        readonly shape: readonly KeyCombination[];
+        readonly path: readonly KeyCombination[];
+        readonly text: readonly KeyCombination[];
+    };
+
     readonly playback: {
         readonly playPause: readonly KeyCombination[];
         readonly playStop: readonly KeyCombination[];
@@ -145,6 +152,13 @@ export const Keybind: Keybind = {
         selectAll: [{ ctrl: true, shift: false, alt: false, code: "KeyA" }],
         deselectAll: [{ ctrl: true, shift: true, alt: false, code: "KeyA" }],
         delete: [{ ctrl: false, shift: false, alt: false, code: "Delete" }],
+    },
+
+    tools: {
+        pointer: [{ ctrl: false, shift: false, alt: false, code: "Digit1" }],
+        shape: [{ ctrl: false, shift: false, alt: false, code: "Digit2" }],
+        path: [{ ctrl: false, shift: false, alt: false, code: "Digit3" }],
+        text: [{ ctrl: false, shift: false, alt: false, code: "Digit4" }],
     },
 
     playback: {
