@@ -13,7 +13,7 @@ import type { Value } from "./value.ts";
 export interface Bundle {
     readonly identifier: symbol;
     readonly includes: ReadonlySet<symbol>;
-    readonly objectTypes: ReadonlyMap<string, ObjectType<unknown>>;
+    readonly objectTypes: ReadonlyMap<string, ObjectType<unknown, unknown>>;
     readonly globals: ReadonlyMap<string, Value<unknown>>;
 }
 
@@ -34,7 +34,7 @@ export interface Bundle {
 export class BundleBuilder {
     #identifier = Symbol();
     #includedBundles = new Set<symbol>();
-    #objectTypes = new Map<string, ObjectType<unknown>>();
+    #objectTypes = new Map<string, ObjectType<unknown, unknown>>();
     #globals = new Map<string, Value<unknown>>();
 
     include(bundle: Bundle): this {
@@ -52,8 +52,8 @@ export class BundleBuilder {
      * @param type Object type
      * @returns Builder for chaining
      */
-    objectType<T>(type: ObjectType<T>): this {
-        this.#objectTypes.set(type.typeId, type);
+    objectType<S, V>(type: ObjectType<S, V>): this {
+        this.#objectTypes.set(type.typeId, type as ObjectType<unknown, unknown>);
         return this;
     }
 

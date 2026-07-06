@@ -1,10 +1,11 @@
 import type { Environment } from "./environment.ts";
 import type { RenderTarget } from "./target.ts";
+import type { Value, ValueType } from "./value.ts";
 
 /**
  * Object type.
  */
-export interface ObjectType<S> {
+export interface ObjectType<S, V = void> {
     /**
      * ID for identifying the type of object.
      *
@@ -16,6 +17,14 @@ export interface ObjectType<S> {
      * mesh's children list, the path part of ID should have `mesh/` prefix.
      */
     readonly typeId: string;
+
+    /**
+     * Value type for value representing this object.
+     *
+     * When the object is referenced in expression, the value obtained from referencing the object have the type
+     * specified in this field.
+     */
+    readonly valueType: V extends void ? null : ValueType<V>;
 
     /**
      * Create a new default object state.
@@ -38,7 +47,9 @@ export interface ObjectType<S> {
      *
      * @param env Environment the renderer is being created
      */
-    createGlobalRenderer(env: Environment): ObjectGlobalRenderer<S> | null | Promise<ObjectGlobalRenderer<S> | null>;
+    createGlobalRenderer(
+        env: Environment,
+    ): ObjectGlobalRenderer<S, V> | null | Promise<ObjectGlobalRenderer<S, V> | null>;
 }
 
 /**
@@ -53,7 +64,7 @@ export interface ObjectType<S> {
  * there is at least 1 object of specific type in the scene and will be freed up when there is no object of the same
  * type in the scene anymore.
  */
-export interface ObjectGlobalRenderer<S> {
+export interface ObjectGlobalRenderer<S, V> {
     /**
      * Begin rendering of all objects.
      *
@@ -67,7 +78,7 @@ export interface ObjectGlobalRenderer<S> {
      *
      * The renderer created from this method is bounds to one specific object only.
      */
-    createLocalRenderer(): ObjectLocalRenderer<S> | Promise<ObjectLocalRenderer<S>>;
+    createLocalRenderer(): ObjectLocalRenderer<S, V> | Promise<ObjectLocalRenderer<S, V>>;
 
     /**
      * Finishing up rendering of all objects.
@@ -88,7 +99,7 @@ export interface ObjectGlobalRenderer<S> {
 /**
  * Object renderer.
  */
-export interface ObjectLocalRenderer<S> {
+export interface ObjectLocalRenderer<S, V> {
     /**
      * Begin rendering the object.
      *
@@ -106,7 +117,7 @@ export interface ObjectLocalRenderer<S> {
      *
      * @param info Render information
      */
-    render(info: RenderInfo<S>): void | Promise<void>;
+    render(info: RenderInfo<S, V>): void | Promise<void>;
 
     /**
      * Finishing up rendering of the object.
@@ -128,7 +139,7 @@ export interface ObjectLocalRenderer<S> {
 /**
  * Render information.
  */
-export interface RenderInfo<S> {
+export interface RenderInfo<S, V> {
     /**
      * Current snapshot of the object state.
      */
@@ -144,11 +155,38 @@ export interface RenderInfo<S> {
     readonly handle: unknown;
 
     /**
+     * Tick rate of the scene.
+     *
+     * Tick is a time unit used for timing and synchronizing audio and video in Nahara's Motion. The tick rate should be
+     * a common multiple of frame rate and audio sampling rate. The tick rate is defined in the scene.
+     */
+    readonly tickRate: number;
+
+    /**
      * The target that object will render into.
      *
      * The target is a map of subtargets that the object can render into.
      */
     readonly target: RenderTarget;
+
+    /**
+     * Lookup variable from name.
+     *
+     * This function is meant to be passed to `evalValue()` to calculate new value.
+     *
+     * @param name Name of the variable
+     */
+    lookupVariable(name: string): Value<unknown> | null;
+
+    /**
+     * Lookup reference from name.
+     *
+     * A reference points to an ancestor, usually pointing to **Repeat** to obtain repeat index. This function is meant
+     * to be passed to `evalValue()` to calculate new value.
+     *
+     * @param name Name of the reference
+     */
+    lookupReference(name: string): Value<unknown> | null;
 
     /**
      * Render children.
@@ -158,7 +196,7 @@ export interface RenderInfo<S> {
      *
      * @param options Render options
      */
-    renderChildren(options?: RenderOptions): Promise<void>;
+    renderChildren(options: V extends void ? RenderOptions : RenderOptionsWithValue<V>): Promise<void>;
 }
 
 /**
@@ -171,4 +209,13 @@ export interface RenderOptions {
      * Children will render into the provided target instead of inheriting the target from parent.
      */
     readonly target?: RenderTarget;
+}
+
+export interface RenderOptionsWithValue<V> extends RenderOptions {
+    /**
+     * Value to pass to children.
+     *
+     * Children can use the value provided from parent by referencing the parent using math expression.
+     */
+    readonly value: V;
 }

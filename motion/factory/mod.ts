@@ -11,9 +11,11 @@
 import * as motion from "@nahara/motion";
 
 import * as expr from "./expr/mod.ts";
+import * as object from "./object/mod.ts";
 
 export const bundle: motion.bundle.Bundle = new motion.bundle.BundleBuilder()
     .include(expr.bundle)
+    .include(object.bundle)
     .build();
 
-export { expr };
+export { expr, object };

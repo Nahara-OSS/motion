@@ -195,6 +195,17 @@ export class ValueType<T> {
     of(data: T): Value<T> {
         return { type: this, data };
     }
+
+    /**
+     * Obtain data from value if the type matches.
+     *
+     * @param value Value
+     * @returns Data in the value, or `null` if the value is `null` or the type mismatches
+     */
+    dataOf(value: Value<unknown> | null): T | null {
+        if (value?.type != this) return null;
+        return value.data as T;
+    }
 }
 
 export interface Value<T> {

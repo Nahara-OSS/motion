@@ -1,6 +1,7 @@
 import type { Environment } from "./environment.ts";
 import type { ObjectGlobalRenderer, ObjectLocalRenderer, ObjectType } from "./object.ts";
 import type { RenderTarget } from "./target.ts";
+import { NumberType, type Value } from "./value.ts";
 
 export interface Scene {
     readonly timeline: SceneTimeline;
@@ -109,6 +110,7 @@ export interface Composition {
 
 export interface SceneObject {
     readonly typeId: string;
+    readonly reference: string | null;
     readonly label: string | null;
     readonly startTick: number;
     readonly endTick: number;
@@ -125,26 +127,29 @@ export interface RenderOptions {
 }
 
 export class SceneRenderer implements Disposable {
-    #globalRenderers = new Map<ObjectType<unknown>, ObjectGlobalRenderer<unknown>>();
-    #localRenderers = new Map<string, ObjectLocalRenderer<unknown>>();
+    static readonly VARIABLE_TIME = "time";
+
+    #globalRenderers = new Map<ObjectType<unknown, unknown>, ObjectGlobalRenderer<unknown, unknown>>();
+    #localRenderers = new Map<string, ObjectLocalRenderer<unknown, unknown>>();
 
     constructor(
         public readonly environment: Environment,
-        public readonly registry: (typeId: string) => ObjectType<unknown> | null,
+        public readonly typeRegistry: (typeId: string) => ObjectType<unknown, unknown> | null,
+        public readonly globalRegistry: (name: string) => Value<unknown> | null,
     ) {}
 
     async render(options: RenderOptions): Promise<void> {
         let rendering = true;
-        const renderedTypes = new Set<ObjectType<unknown>>();
+        const renderedTypes = new Set<ObjectType<unknown, unknown>>();
         const removingTypes = new Set(this.#globalRenderers.keys());
         const renderedObjects = new Set<string>();
         const removingObjects = new Set<string>();
 
-        const render = async (objectId: string, target: RenderTarget) => {
+        const render = async (objectId: string, target: RenderTarget, references: Record<string, Value<unknown>>) => {
             const object = options.scene.objects[objectId];
             if (object == null) return;
 
-            const type = this.registry(object.typeId);
+            const type = this.typeRegistry(object.typeId);
             if (type == null) return;
 
             const globalRenderer = this.#globalRenderers.get(type) ?? await type.createGlobalRenderer(this.environment);
@@ -170,20 +175,52 @@ export class SceneRenderer implements Disposable {
                 }
 
                 await localRenderer.render({
-                    handle: objectId,
                     state: object.state,
+                    handle: objectId,
+                    tickRate: options.scene.timeline.tickRate,
                     target: target,
-                    renderChildren: async (options = {}) => {
+
+                    lookupVariable: (name) => {
+                        if (name == SceneRenderer.VARIABLE_TIME) {
+                            const time = options.currentTick / options.scene.timeline.tickRate;
+                            return NumberType.of(time) as Value<unknown>;
+                        }
+
+                        return this.globalRegistry(name);
+                    },
+
+                    lookupReference: (name) => {
+                        return references[name] ?? null;
+                    },
+
+                    // deno-lint-ignore no-explicit-any
+                    renderChildren: async (options = {} as any) => {
                         if (!rendering) throw new Error("Attempt to render children outside rendering scope");
+
                         const childrenTarget = options.target ?? target;
-                        for (const id of object.childrenIds) await render(id, childrenTarget);
+                        let refs = references;
+
+                        if (type.valueType != null && object.reference != null) {
+                            if (options.value == null) {
+                                throw new Error("Object declared `valueType` but not providing `value`");
+                            }
+
+                            refs = {
+                                ...refs,
+                                [object.reference]: type.valueType.of(options.value),
+                            };
+                        }
+
+                        for (const id of object.childrenIds) {
+                            await render(id, childrenTarget, refs);
+                        }
                     },
                 });
             }
         };
 
         for (const id of options.scene.rootIds) {
-            await render(id, options.target);
+            await render(id, options.target, {});
         }
 
         for (const id of renderedObjects) {

@@ -57,6 +57,25 @@ export interface Point {
 }
 
 /**
+ * Create animator with constant value at any time position.
+ *
+ * @param value Value
+ * @returns Animator with constant value
+ */
+export function constant(value: number): Animator {
+    return {
+        keyframes: [
+            {
+                keyframeId: "default",
+                target: { tick: 0, value },
+                lcp: { tick: 0, value },
+                rcp: { tick: 0, value },
+            },
+        ],
+    };
+}
+
+/**
  * Sample animator.
  *
  * @param animator Animator to sample
