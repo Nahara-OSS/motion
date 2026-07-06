@@ -284,8 +284,9 @@ export function evalType(options: EvalOptions<ValueType<unknown>>): EvalResult<V
                 return {
                     expression,
                     type: "eval-error",
-                    kind: "not-boolean",
-                    from: condition.value,
+                    kind: "type-mismatch",
+                    expect: BooleanType as ValueType<unknown>,
+                    found: condition.value,
                 };
             }
 
@@ -294,8 +295,8 @@ export function evalType(options: EvalOptions<ValueType<unknown>>): EvalResult<V
                     expression,
                     type: "eval-error",
                     kind: "type-mismatch",
-                    ifTrue: ifTrue.value,
-                    ifFalse: ifFalse.value,
+                    expect: ifTrue.value,
+                    found: ifFalse.value,
                 };
             }
 
@@ -477,8 +478,9 @@ export function evalValue(options: EvalOptions<Value<unknown>>): EvalResult<Valu
                 return {
                     expression,
                     type: "eval-error",
-                    kind: "not-boolean",
-                    from: condition.value,
+                    kind: "type-mismatch",
+                    expect: BooleanType as ValueType<unknown>,
+                    found: condition.value,
                 };
             }
 
@@ -514,8 +516,7 @@ export type EvalResult<T> =
                 | { readonly kind: "no-unary-operator"; readonly from: T; readonly op: UnaryOperator }
                 | { readonly kind: "not-callable"; readonly from: T }
                 | { readonly kind: "no-signature"; readonly from: T; readonly parameters: readonly T[] }
-                | { readonly kind: "not-boolean"; readonly from: T }
-                | { readonly kind: "type-mismatch"; readonly ifTrue: T; readonly ifFalse: T }
+                | { readonly kind: "type-mismatch"; readonly expect: ValueType<unknown>; readonly found: T }
             )
         )
     );
