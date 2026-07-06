@@ -45,7 +45,7 @@
     "help.userManual": "User manual",
     "help.aboutMotion": "About Nahara's Motion",
     "object.group.loops": "Loops",
-    "object.type.nahara:loops/repeat": "Duplicate children",
+    "object.type.nahara:loops/repeat": "Object duplicator",
     "object.namespace.nahara": "Built-in",
     "expression.error.syntax.unexpected-character": "Unexpected character(s)",
     "expression.error.syntax.unexpected-token": "Unexpected token",
