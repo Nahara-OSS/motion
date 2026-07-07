@@ -119,6 +119,50 @@ export interface SceneObject {
     readonly childrenIds: readonly string[];
 }
 
+/**
+ * Find the parent ID of a child.
+ *
+ * @param scene Scene
+ * @param childId ID of the child
+ * @returns ID of parent, or `null` if the child is attached to scene root
+ */
+export function findParentId(scene: Scene, childId: string): string | null {
+    if (scene.rootIds.includes(childId)) return null;
+
+    for (const parentId in scene.objects) {
+        if (parentId == childId) continue;
+        if (scene.objects[parentId].childrenIds.includes(childId)) return parentId;
+    }
+
+    return null;
+}
+
+export interface Query {
+    readonly objects: Readonly<Record<string, SceneObject>>;
+    readonly selectedIds: readonly string[];
+}
+
+/**
+ * Query all object states that are directly or indirectly selected.
+ *
+ * The purpose is to store the selection to clipboard for copy and paste.
+ *
+ * @param scene Scene
+ * @param selectedIds List of selected object IDs
+ */
+export function query(scene: Scene, selectedIds: readonly string[]): Query {
+    const objects: Record<string, SceneObject> = {};
+
+    function pick(objectId: string): void {
+        if (objects[objectId] != null) return;
+        objects[objectId] = scene.objects[objectId];
+        scene.objects[objectId].childrenIds.forEach(pick);
+    }
+
+    selectedIds.forEach(pick);
+    return { objects, selectedIds };
+}
+
 export interface RenderOptions {
     readonly scene: Scene;
     readonly currentTick: number;

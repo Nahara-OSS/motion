@@ -4,7 +4,7 @@ import { RootFolder } from "./files.ts";
 import { Settings } from "./settings.ts";
 import type { WorkspaceState } from "./workspace.ts";
 import type { PanelState } from "./panel/panels.ts";
-import { bundle, scene, timing } from "@nahara/motion";
+import * as motion from "@nahara/motion";
 import * as factory from "@nahara/motion/factory";
 import { Keybind } from "./keyboard.ts";
 
@@ -20,7 +20,7 @@ export class EditorSession {
     private constructor(
         public readonly appRoot: RootFolder,
         public readonly gpu: GPUDevice,
-        public readonly bundle: bundle.Bundle,
+        public readonly bundle: motion.bundle.Bundle,
     ) {
     }
 
@@ -64,7 +64,7 @@ export class SceneSession {
     #undoStack = new BehaviorSubject<readonly HistoryEntry[]>([]);
     #redoStack = new BehaviorSubject<readonly HistoryEntry[]>([]);
     #savedHistoryId = new BehaviorSubject<string | null>(null);
-    #scene: BehaviorSubject<scene.Scene>;
+    #scene: BehaviorSubject<motion.scene.Scene>;
     #state = new BehaviorSubject<"paused" | "playing">("paused");
     #seekheadPositionChanged = new Subject<void>();
     #lastPlayTime = performance.now();
@@ -78,7 +78,7 @@ export class SceneSession {
     constructor(
         public readonly project: ProjectSession,
         public readonly path: readonly string[],
-        scene: scene.Scene,
+        scene: motion.scene.Scene,
     ) {
         this.#scene = new BehaviorSubject(scene);
         this.#seekheadInitialPosition = scene.timeline.startTick;
@@ -121,11 +121,11 @@ export class SceneSession {
         return filename.endsWith(".scene") ? filename.substring(0, filename.length - 6) : filename;
     }
 
-    get scene(): scene.Scene {
+    get scene(): motion.scene.Scene {
         return this.#scene.value;
     }
 
-    get scene$(): Observable<scene.Scene> {
+    get scene$(): Observable<motion.scene.Scene> {
         return this.#scene;
     }
 
@@ -156,7 +156,8 @@ export class SceneSession {
         if (oldState == "paused" && state == "playing") {
             this.#lastPlayTime = performance.now();
         } else if (oldState == "playing" && state == "paused") {
-            const delta = Math.floor((performance.now() - this.#lastPlayTime) * timing.TICKS_PER_SECOND / 1000);
+            const tickRate = this.#scene.value.timeline.tickRate;
+            const delta = Math.floor((performance.now() - this.#lastPlayTime) * tickRate / 1000);
             this.#seekheadInitialPosition += delta;
         }
     }
@@ -178,7 +179,8 @@ export class SceneSession {
         if (this.#state.value == "paused") {
             return this.#seekheadInitialPosition;
         } else {
-            const delta = Math.floor((performance.now() - this.#lastPlayTime) * timing.TICKS_PER_SECOND / 1000);
+            const tickRate = this.#scene.value.timeline.tickRate;
+            const delta = Math.floor((performance.now() - this.#lastPlayTime) * tickRate / 1000);
             return this.#seekheadInitialPosition + delta;
         }
     }
@@ -204,7 +206,7 @@ export class SceneSession {
      * @param name Name of the edit history
      * @returns History entry
      */
-    editScene(updater: (scene: scene.Scene) => scene.Scene, name?: string): HistoryEntry | null {
+    editScene(updater: (scene: motion.scene.Scene) => motion.scene.Scene, name?: string): HistoryEntry | null {
         const id = crypto.randomUUID();
         const prevState = this.#scene.value;
         const nextState = updater(this.#scene.value);
@@ -215,6 +217,7 @@ export class SceneSession {
         this.#scene.next(nextState);
         this.#undoStack.next([...this.#undoStack.value, entry]);
         if (this.#redoStack.value.length != 0) this.#redoStack.next([]);
+        this.#postSceneUpdate();
         return entry;
     }
 
@@ -238,6 +241,16 @@ export class SceneSession {
             this.#undoStack.next([...this.#undoStack.value, ...movingEntries]);
             this.#scene.next(target.nextState);
         }
+
+        this.#postSceneUpdate();
+    }
+
+    #postSceneUpdate(): void {
+        // Fix selection
+        if (this.selectedObjectIds.value.some((id) => this.#scene.value.objects[id] == null)) {
+            const ids = this.selectedObjectIds.value;
+            this.selectedObjectIds.next(ids.filter((id) => this.#scene.value.objects[id] != null));
+        }
     }
 
     async saveScene(): Promise<void> {
@@ -251,8 +264,8 @@ export class SceneSession {
 export interface HistoryEntry {
     readonly id: string;
     readonly name?: string;
-    readonly prevState: scene.Scene;
-    readonly nextState: scene.Scene;
+    readonly prevState: motion.scene.Scene;
+    readonly nextState: motion.scene.Scene;
 }
 
 export function getEditorSession(): EditorSession {
@@ -277,3 +290,111 @@ const defaultWorkspace: WorkspaceState<PanelState> = {
     },
     floating: [],
 };
+
+export interface SceneEditor {
+    scene: motion.scene.Scene;
+
+    // Compositions
+
+    // Objects
+    newObject(state: motion.scene.SceneObject): string;
+    newDefaultObject<S, V>(type: motion.object.ObjectType<S, V>): string;
+    cloneObject(objectId: string): string;
+    cloneFrom(objects: { readonly objects: motion.scene.Scene["objects"] }, objectId: string): string;
+    deleteObject(objectId: string): void;
+    updateChildrenList(parentId: string | null, updater: (childrenIds: readonly string[]) => readonly string[]): void;
+}
+
+/**
+ * Create a new scene updater.
+ *
+ * The returned function is meant to be passed to `editScene()`.
+ *
+ * @param callback Callback for editing the scene
+ */
+export function createSceneUpdater(
+    callback: (editor: SceneEditor) => unknown,
+): (scene: motion.scene.Scene) => motion.scene.Scene {
+    return (scene) => {
+        const newObject: SceneEditor["newObject"] = (state) => {
+            const id = crypto.randomUUID();
+            scene = { ...scene, objects: { ...scene.objects, [id]: state } };
+            return id;
+        };
+
+        const newDefaultObject: SceneEditor["newDefaultObject"] = (type) => (newObject({
+            typeId: type.typeId,
+            reference: null,
+            label: null,
+            startTick: scene.timeline.startTick,
+            endTick: scene.timeline.endTick,
+            visibility: {},
+            state: type.createDefault(),
+            childrenIds: [],
+        }));
+
+        const cloneFrom: SceneEditor["cloneFrom"] = (source, sourceId) => {
+            const sourceObject = source.objects[sourceId];
+            const clonedChildrenIds = sourceObject.childrenIds.map((id) => cloneFrom(source, id));
+            return newObject({ ...sourceObject, childrenIds: clonedChildrenIds });
+        };
+
+        const cloneObject: SceneEditor["cloneObject"] = (sourceId) => {
+            return cloneFrom(scene, sourceId);
+        };
+
+        const deleteObject: SceneEditor["deleteObject"] = (objectId) => {
+            for (const childId of scene.objects[objectId].childrenIds) deleteObject(childId);
+            scene = {
+                ...scene,
+                objects: Object.fromEntries(
+                    Object.entries(scene.objects)
+                        .filter(([id]) => id != objectId)
+                        .map(([id, object]) => {
+                            return [id, { ...object, childrenIds: object.childrenIds.filter((id) => id != objectId) }];
+                        }),
+                ),
+                rootIds: scene.rootIds.filter((id) => id != objectId),
+            };
+        };
+
+        const updateChildrenList: SceneEditor["updateChildrenList"] = (parentId, updater) => {
+            if (parentId == null) {
+                scene = {
+                    ...scene,
+                    rootIds: updater(scene.rootIds),
+                };
+            } else {
+                scene = {
+                    ...scene,
+                    objects: {
+                        ...scene.objects,
+                        [parentId]: {
+                            ...scene.objects[parentId],
+                            childrenIds: updater(scene.objects[parentId].childrenIds),
+                        },
+                    },
+                };
+            }
+        };
+
+        callback({
+            get scene() {
+                return scene;
+            },
+
+            set scene(value: motion.scene.Scene) {
+                scene = value;
+            },
+
+            newObject,
+            newDefaultObject,
+            cloneObject,
+            cloneFrom,
+            deleteObject,
+            updateChildrenList,
+        });
+
+        return scene;
+    };
+}

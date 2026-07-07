@@ -8,11 +8,11 @@
     import Panel from "../component/Panel.svelte";
     import SimpleMenu from "../component/SimpleMenu.svelte";
     import TextLabel from "../component/TextLabel.svelte";
-    import { getEditorSession } from "../editor";
+    import { createSceneUpdater, getEditorSession } from "../editor";
     import type { PanelMap } from "./panels";
     import Popover from "../component/Popover.svelte";
     import NewCompositionDialog from "../dialog/NewCompositionDialog.svelte";
-    import { object, scene } from "@nahara/motion";
+    import * as motion from "@nahara/motion";
     import Button from "../component/Button.svelte";
     import Translation from "../util/Translation.svelte";
 
@@ -141,58 +141,29 @@
         );
     }
 
-    function addObject(type: object.ObjectType<unknown, unknown>) {
+    function addObject(type: motion.object.ObjectType<unknown, unknown>) {
         if ($sceneSession == null) return;
 
         const session = $sceneSession;
         const selectedObjectIds = session.selectedObjectIds.value;
         const createdObjectIds: string[] = [];
 
-        session.editScene((scene) => {
-            const newObject = {
-                typeId: type.typeId,
-                reference: null,
-                label: null,
-                startTick: scene.timeline.startTick,
-                endTick: scene.timeline.endTick,
-                visibility: {},
-                state: type.createDefault(),
-                childrenIds: [],
-            };
-
-            if (selectedObjectIds.length == 0) {
-                const newId = crypto.randomUUID();
-                createdObjectIds.push(newId);
-
-                scene = {
-                    ...scene,
-                    objects: {
-                        ...scene.objects,
-                        [newId]: newObject,
-                    },
-                    rootIds: [...scene.rootIds, newId],
-                };
-            } else {
-                for (const parentId of selectedObjectIds) {
-                    const object = scene.objects[parentId];
-                    if (object == null) continue;
-
-                    const newId = crypto.randomUUID();
-                    createdObjectIds.push(newId);
-
-                    scene = {
-                        ...scene,
-                        objects: {
-                            ...scene.objects,
-                            [parentId]: { ...object, childrenIds: [...object.childrenIds, newId] },
-                            [newId]: newObject,
-                        },
-                    };
+        session.editScene(
+            createSceneUpdater((editor) => {
+                if (selectedObjectIds.length == 0) {
+                    const objectId = editor.newDefaultObject(type);
+                    editor.updateChildrenList(null, (ids) => [...ids, objectId]);
+                    createdObjectIds.push(objectId);
+                } else {
+                    for (const parentId of selectedObjectIds) {
+                        const objectId = editor.newDefaultObject(type);
+                        editor.updateChildrenList(parentId, (ids) => [...ids, objectId]);
+                        createdObjectIds.push(objectId);
+                    }
                 }
-            }
-
-            return scene;
-        }, "Add object");
+            }),
+            "Add object",
+        );
 
         session.selectedObjectIds.next(createdObjectIds);
     }
@@ -237,32 +208,11 @@
         const selectedIds = session.selectedObjectIds.value;
 
         const edit = session.editScene(
-            (scene) => {
-                function deleteId(objectId: string) {
-                    const object = scene.objects[objectId];
-                    if (object == null) return;
-                    for (const id of object.childrenIds) deleteId(id);
-
-                    scene = {
-                        ...scene,
-                        objects: Object.fromEntries(
-                            Object.entries(scene.objects)
-                                .filter(([id]) => id != objectId)
-                                .map(([id, object]) => [
-                                    id,
-                                    {
-                                        ...object,
-                                        childrenIds: object.childrenIds.filter((id) => id != objectId),
-                                    },
-                                ]),
-                        ),
-                        rootIds: scene.rootIds.filter((id) => id != objectId),
-                    };
+            createSceneUpdater((editor) => {
+                for (const id of selectedIds) {
+                    if (editor.scene.objects[id] != null) editor.deleteObject(id);
                 }
-
-                for (const id of selectedIds) deleteId(id);
-                return scene;
-            },
+            }),
             selectedIds.length > 1 ? "Delete objects" : "Delete object",
         );
 
@@ -278,68 +228,22 @@
         const createdObjectIds: string[] = [];
 
         session.editScene(
-            (scene) => {
-                function parentIdOf(objectId: string): string | null {
-                    if (scene.rootIds.includes(objectId)) return null;
+            createSceneUpdater((editor) => {
+                const query = motion.scene.query(editor.scene, selectedObjectIds);
 
-                    for (const [parentId, parentObject] of Object.entries(scene.objects)) {
-                        if (parentObject.childrenIds.includes(objectId)) return parentId;
-                    }
+                for (const sourceId of selectedObjectIds) {
+                    const parentId = motion.scene.findParentId(editor.scene, sourceId);
+                    const clonedId = editor.cloneFrom(query, sourceId);
 
-                    return null;
+                    editor.updateChildrenList(parentId, (ids) => {
+                        const index = ids.indexOf(sourceId) + 1;
+                        return [...ids.slice(0, index), clonedId, ...ids.slice(index)];
+                    });
+
+                    createdObjectIds.push(clonedId);
                 }
-
-                function cloneAsNewId(objectId: string): string {
-                    const object = scene.objects[objectId];
-                    const newId = crypto.randomUUID();
-                    const childrenIds = object.childrenIds.map(cloneAsNewId);
-
-                    scene = {
-                        ...scene,
-                        objects: {
-                            ...scene.objects,
-                            [newId]: { ...object, childrenIds },
-                        },
-                    };
-
-                    createdObjectIds.push(newId);
-                    return newId;
-                }
-
-                function duplicate(objectId: string) {
-                    const parentId = parentIdOf(objectId);
-                    const newId = cloneAsNewId(objectId);
-
-                    if (parentId == null) {
-                        const childrenIds = scene.rootIds;
-                        const index = childrenIds.indexOf(objectId) + 1;
-
-                        scene = {
-                            ...scene,
-                            rootIds: [...childrenIds.slice(0, index), newId, ...childrenIds.slice(index)],
-                        };
-                    } else {
-                        const childrenIds = scene.objects[parentId].childrenIds;
-                        const index = childrenIds.indexOf(objectId) + 1;
-
-                        scene = {
-                            ...scene,
-                            objects: {
-                                ...scene.objects,
-                                [parentId]: {
-                                    ...scene.objects[parentId],
-                                    childrenIds: [...childrenIds.slice(0, index), newId, ...childrenIds.slice(index)],
-                                },
-                            },
-                        };
-                    }
-                }
-
-                for (const id of selectedObjectIds) duplicate(id);
-                console.log(scene);
-                return scene;
-            },
-            selectedObjectIds.length > 1 ? "Duplicat objects" : "Duplicate object",
+            }),
+            selectedObjectIds.length > 1 ? "Duplicate objects" : "Duplicate object",
         );
 
         session.selectedObjectIds.next(createdObjectIds);
@@ -354,11 +258,11 @@
     interface ObjectTypeEntry {
         name: string;
         namespace: string;
-        type: object.ObjectType<unknown, unknown>;
+        type: motion.object.ObjectType<unknown, unknown>;
     }
 
     function organizeObjectTypesToTree(
-        list: Iterable<object.ObjectType<unknown, unknown>>,
+        list: Iterable<motion.object.ObjectType<unknown, unknown>>,
     ): [FolderEntry[], ObjectTypeEntry[]] {
         const folders: FolderEntry[] = [];
         const objectTypes: ObjectTypeEntry[] = [];
@@ -563,7 +467,7 @@
     {/if}
 {/snippet}
 
-{#snippet objectSnippet(objectId: string, scene: scene.Scene)}
+{#snippet objectSnippet(objectId: string, scene: motion.scene.Scene)}
     <div class="entry">
         <div class="object">
             <Button
