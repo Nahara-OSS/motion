@@ -1,0 +1,7 @@
+{
+    "editor.defaultFormatter": "denoland.vscode-deno",
+    "[svg]": {
+        "editor.defaultFormatter": "jock.svg"
+    },
+    "svg.preview.background": "editor"
+}

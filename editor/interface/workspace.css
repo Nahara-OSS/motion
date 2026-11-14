@@ -1,0 +1,124 @@
+.nahara-ui-workspace {
+    position: relative;
+}
+
+.nahara-ui-panel-group {
+    position: absolute;
+    background-color: var(--theme-background);
+    border: 1px solid var(--theme-border-lo);
+    display: flex;
+    flex-direction: column;
+
+    &.floating {
+        box-shadow: 0 8px 32px #0001;
+    }
+
+    > header {
+        background-color: var(--theme-container-lo);
+        display: flex;
+        flex-direction: column;
+
+        > .titlebar {
+            display: flex;
+            flex-direction: row;
+
+            > .tabs {
+                width: 0;
+                flex-grow: 1;
+                display: flex;
+                flex-direction: row;
+                flex-wrap: nowrap;
+                overflow-y: scroll;
+
+                &::-webkit-scrollbar {
+                    display: none;
+                }
+
+                > .tab {
+                    padding: 0.5em;
+                    display: flex;
+                    flex-direction: row;
+                    gap: 0.2em;
+
+                    > .label {
+                        display: flex;
+                        flex-direction: row;
+                        padding: 0.1em;
+                        gap: 0.1em;
+                        height: 24px;
+                        align-items: center;
+                    }
+
+                    &:hover {
+                        background-color: var(--theme-container-md);
+                    }
+
+                    &:active {
+                        background-color: var(--theme-container-hi);
+                    }
+
+                    &.active {
+                        background-color: var(--theme-background);
+                    }
+
+                    &:only-child {
+                        width: 0;
+                        flex-grow: 1;
+                        background-color: transparent;
+                    }
+                }
+            }
+
+            > .controls {
+                padding: 0.5em;
+                display: flex;
+                flex-direction: row;
+            }
+        }
+    }
+
+    > main {
+        position: relative;
+        height: 0;
+        flex-grow: 1;
+        overflow: auto;
+    }
+}
+
+.nahara-ui-workspace-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background-image: linear-gradient(
+        45deg,
+        transparent calc(50% - 0.5px),
+        var(--theme-border-lo) calc(50% - 0.5px),
+        var(--theme-border-lo) calc(50% + 0.5px),
+        transparent calc(50% + 0.5px)
+    ), linear-gradient(
+        45deg,
+        transparent 0px,
+        var(--theme-border-lo) 0px,
+        var(--theme-border-lo) 0.5px,
+        transparent 0.5px
+    ), linear-gradient(
+        45deg,
+        transparent calc(100% - 0.5px),
+        var(--theme-border-lo) calc(100% - 0.5px),
+        var(--theme-border-lo) 100%,
+        transparent 100%
+    );
+    background-size: 1em 1em;
+
+    > .overlay {
+        display: flex;
+        flex-direction: row;
+        background-color: var(--theme-background);
+        padding: 0.1em;
+        gap: 0.1em;
+        height: 2em;
+    }
+}

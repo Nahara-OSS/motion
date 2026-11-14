@@ -1,0 +1,7 @@
+{
+    "name": "@nahara/motion-binary",
+    "version": "0.0.1",
+    "license": "MIT",
+    "exports": "./mod.ts",
+    "publish": false
+}

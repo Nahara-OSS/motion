@@ -1,0 +1,6 @@
+{
+    "publish": false,
+    "imports": {
+        "@img/png": "jsr:@img/png@^0.1.6"
+    }
+}

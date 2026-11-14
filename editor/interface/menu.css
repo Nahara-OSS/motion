@@ -1,0 +1,125 @@
+.nahara-ui-menu-button {
+    /* Sync with .nahara-ui-button */
+    display: flex;
+    flex-direction: row;
+    gap: 0.1em;
+    align-items: center;
+    height: 2em;
+    padding: 0.1em;
+    font-family: inherit;
+    font-size: inherit;
+    appearance: none;
+    position: relative;
+    border: 1px solid;
+
+    &:disabled {
+        &::before {
+            content: '';
+            background-image: linear-gradient(
+                to bottom right,
+                transparent calc(50% - 1px),
+                var(--theme-border-lo) calc(50% - 0.5px),
+                var(--theme-border-lo) calc(50% + 0.5px),
+                transparent calc(50% + 1px)
+            );
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+        }
+    }
+
+    &.style-generic {
+        & {
+            background-color: transparent;
+            border-color: transparent;
+        }
+
+        &:hover {
+            background-color: transparent;
+            border-color: var(--theme-border-md);
+        }
+
+        &:active {
+            background-color: var(--theme-container-hi);
+            border-color: var(--theme-border-hi);
+        }
+
+        &.activated {
+            background-color: var(--theme-background);
+            border-color: var(--theme-border-hi);
+        }
+
+        &:disabled {
+            color: var(--theme-foreground-secondary);
+            background-color: transparent;
+            border-color: transparent;
+        }
+    }
+
+    &.style-bordered {
+        & {
+            background-color: var(--theme-background);
+            border-color: var(--theme-border-lo);
+        }
+
+        &:hover {
+            background-color: var(--theme-container-md);
+            border-color: var(--theme-border-md);
+        }
+
+        &:active {
+            background-color: var(--theme-container-hi);
+            border-color: var(--theme-border-hi);
+        }
+
+        &.activated {
+            background-color: var(--theme-container-hi);
+            border-color: var(--theme-border-hi);
+        }
+
+        &:disabled {
+            color: var(--theme-foreground-secondary);
+            background-color: var(--theme-container-lo);
+            border-color: var(--theme-border-lo);
+        }
+    }
+
+    &.child-item {
+        border: 0;
+        background-color: transparent;
+        border-color: transparent;
+
+        &:hover {
+            background-color: var(--theme-container-md);
+        }
+
+        &:active {
+            background-color: var(--theme-container-hi);
+        }
+
+        &.activated {
+            background-color: var(--theme-container-lo);
+        }
+    }
+}
+
+.nahara-ui-menu {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--theme-border-hi);
+    background-color: var(--theme-background);
+
+    &.down {
+        margin-top: -0.5px;
+    }
+
+    &.up {
+        margin-bottom: -0.5px;
+    }
+}
+
+.nahara-ui-menu-separator {
+    border-bottom: 1px solid var(--theme-border-lo);
+}

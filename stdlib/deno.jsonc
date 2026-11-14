@@ -1,0 +1,6 @@
+{
+    "name": "@nahara/motion-stdlib",
+    "version": "0.0.1",
+    "license": "MIT",
+    "exports": "./mod.ts"
+}

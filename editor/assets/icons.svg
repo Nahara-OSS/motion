@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">
+    <symbol id="add" viewBox="0 0 20 20">
+        <path d="M 10,4 L 10,16 M 4,10 L 16,10" fill="none" stroke="currentColor" />
+    </symbol>
+
+    <symbol id="book" viewBox="0 0 20 20">
+        <path d="M 10,8 Q 10,6,16,6 L 16,14 Q 10,14,10,16 Q 10,14,4,14 L 4,6 Q 10,6,10,8 L 10,16" fill="none"
+            stroke="currentColor" />
+    </symbol>
+
+    <symbol id="checked" viewBox="0 0 20 20">
+        <path d="M 4,12 Q 7,12,10,16 Q 14,4,16,4 Q 14,4,9,13 Q 6,11,4,12" fill="currentColor" stroke="none" />
+    </symbol>
+
+    <symbol id="circle" viewBox="0 0 20 20">
+        <circle cx="10" cy="10" r="6" fill="none" stroke="currentColor" />
+    </symbol>
+
+    <symbol id="close" viewBox="0 0 20 20">
+        <!-- Optical trick to make it look nice -->
+        <path d="M 5,5 L 15,15 M 5,15 L 15,5" fill="none" stroke="currentColor" />
+    </symbol>
+
+    <symbol id="cursor" viewBox="0 0 20 20">
+        <path d="M 6,4 L 6,16 L 9,11 L 15,11 Z" fill="none" stroke="currentColor" />
+    </symbol>
+
+    <symbol id="component" viewBox="0 0 20 20">
+        <path
+            d="M 4,16 L 7,16 C 6,13,11,13,10,16 L 13,16 L 13,13 C 16,14,16,9,13,10 L 13,7 L 10,7 C 11,4,6,4,7,7 L 4,7 L 4,10 C 7,9,7,14,4,13 Z"
+            stroke="currentColor" fill="none" />
+    </symbol>
+
+    <symbol id="doll" viewBox="0 0 20 20">
+        <path d="M 10,10 L 7,9 M 10,10 L 13,9 M 10,8 L 10,14 M 10,14 L 6,16 M 10,14 L 14,16" fill="none"
+            stroke="currentColor" />
+        <circle cx="10" cy="6" r="2" fill="none" stroke="currentColor" />
+    </symbol>
+
+    <symbol id="file" viewBox="0 0 20 20">
+        <path d="M 6,4 L 6,16 L 14,16 L 14,7 L 11,4 Z M 11,4 L 11,7 L 14,7" fill="none" stroke="currentColor" />
+    </symbol>
+
+    <symbol id="freehand" viewBox="0 0 20 20">
+        <path d="M 6,12 L 8,14 L 4,16 Z M 6,12 L 8,14 L 16,5 L 14,3 Z" fill="none" stroke="currentColor" />
+        <path d="M 4,16 Q 2,12,4,10 Q 11,6,6,4" fill="none" stroke="currentColor" />
+    </symbol>
+
+    <symbol id="folder" viewBox="0 0 20 20">
+        <path d="M 6,8 L 16,8 L 14,14 L 4,14 Z M 4,14 L 4,6 L 9,6 L 10,7 L 14,7 L 14,8" stroke="currentColor"
+            fill="none" />
+    </symbol>
+
+    <symbol id="function" viewBox="0 0 20 20">
+        <path d="M 10.5,4 Q 8.5,5,8.5,6 Q 8.5,8,6.5,14 Q 6.5,15,4.5,16 M 5.5,8 L 10.5,8" fill="none"
+            stroke="currentColor" />
+        <path d="M 10.5,11 Q 12.5,11,12.5,13.5 Q 11.5,16,9.5,16 M 15.5,11 Q 13.5,11,13,13.5 Q 12.5,16,14.5,16"
+            fill="none" stroke="currentColor" />
+    </symbol>
+
+    <symbol id="library" viewBox="0 0 20 20">
+        <path d="M 4,4 L 7,4 L 7,16 L 4,16 Z M 4,6 L 7,6" fill="none" stroke="currentColor" />
+        <path d="M 7,4 L 10,4 L 10,16 L 7,16 Z M 7,6 L 10,6" fill="none" stroke="currentColor" />
+        <path d="M 10,6 L 13,4.5 L 18,14.5 L 15,16 Z M 11,8 L 14,6.5" fill="none" stroke="currentColor" />
+    </symbol>
+
+    <symbol id="module" viewBox="0 0 20 20">
+        <path
+            d="M 10,4 L 7,6 L 7,9, L 4,11 L 4,14, L 7,16 L 10,14 L 13,16 L 16,14 L 16,11 L 13,9 L 13,6 Z M 7,6 L 10,8 L 13,6 M 10,8 L 10,11 M 7,9 L 10,11 L 13,9 M 4,11 L 7,13 L 10,11 L 13,13 L 16,11 M 7,13 L 7,16 M 10,11 L 10,14 M 13,13 L 13,16"
+            fill="none" stroke="currentColor" />
+    </symbol>
+
+    <symbol id="nahara-motion" viewBox="0 0 20 20">
+        <image href="./app-icon-mono.svg" x="0" y="0" width="20" height="20"></image>
+    </symbol>
+
+    <symbol id="options" viewBox="0 0 20 20">
+        <circle cx="10" cy="5" r="1" fill="currentColor" stroke="none" />
+        <circle cx="10" cy="10" r="1" fill="currentColor" stroke="none" />
+        <circle cx="10" cy="15" r="1" fill="currentColor" stroke="none" />
+    </symbol>
+
+    <symbol id="path" viewBox="0 0 20 20">
+        <path d="M 10,6 Q 10,12,14,14 L 14,16 M 10,6 Q 10,12,6,14 L 6,16 M 10,6 L 10,14 M 7,6 L 13,6" fill="none"
+            stroke="currentColor" />
+        <circle cx="5" cy="6" r="2" fill="none" stroke="currentColor" />
+        <circle cx="15" cy="6" r="2" fill="none" stroke="currentColor" />
+    </symbol>
+
+    <symbol id="picture" viewBox="0 0 20 20">
+        <path d="M 4,6 L 16,6 L 16,14 L 4,14 Z M 4,14 Q 6,8,9,12 M 8,14 Q 12,2,16,14" fill="none"
+            stroke="currentColor" />
+    </symbol>
+
+    <symbol id="save" viewBox="0 0 20 20">
+        <path d="M 4,4 L 14,4 L 16,6 L 16,16 L 4,16 Z M 6,4 L 6,10 L 14,10 L 14,4" fill="none" stroke="currentColor" />
+    </symbol>
+
+    <symbol id="scene" viewBox="0 0 20 20">
+        <path d="M 4,6 L 16,6 L 16,14 L 4,14 Z M 6,12.5 L 14,12.5" fill="none" stroke="currentColor" />
+        <path d="M 4,6 L 8,6 Q 8,9,6,10 Q 6,12,4,14" fill="currentColor" stroke="none" />
+        <path d="M 16,6 L 12,6 Q 12,9,14,10 Q 14,12,16,14" fill="currentColor" stroke="none" />
+    </symbol>
+
+    <symbol id="slideshow" viewBox="0 0 20 20">
+        <path d="M 6,7 L 16,7 L 16,15 L 6,15 Z M 6,13 L 4,13 L 4,5 L 14,5 L 14,7 M 8,11 L 14,11 M 8,13 L 12,13"
+            fill="none" stroke="currentColor" />
+    </symbol>
+
+    <symbol id="shapes" viewBox="0 0 20 20">
+        <path d="M 4,4 L 12,4 L 12,12 L 4,12 Z M 7,11 A 2,2,360,1,0,16,11 M 7,11 A 2,2,360,1,1,16,11" fill="none"
+            stroke="currentColor" />
+    </symbol>
+
+    <symbol id="space" viewBox="0 0 20 20">
+    </symbol>
+
+    <symbol id="square" viewBox="0 0 20 20">
+        <path d="M 5,5 L 15,5 L 15,15 L 5,15 Z" fill="none" stroke="currentColor" />
+    </symbol>
+
+    <symbol id="transition" viewBox="0 0 20 20">
+        <path d="M 4,6 L 16,6 L 16,14 L 4,14 Z" fill="none" stroke="currentColor" />
+        <path d="M 4,6 L 8,6 L 12,14 L 4,14 Z" fill="currentColor" stroke="none" />
+    </symbol>
+
+    <symbol id="type" viewBox="0 0 20 20">
+        <path d="M 10,3 L 4,7 L 4,13 L 10,17 L 16,13 L 16,7 Z M 10,11 L 4,7 M 10,11 L 16,7 M 10,11 L 10,17" fill="none"
+            stroke="currentColor" />
+    </symbol>
+
+    <!-- Preview -->
+    <use href="#checked" x="0" y="0" width="20" height="20"></use>
+    <use href="#nahara-motion" x="20" y="0" width="20" height="20"></use>
+    <use href="#close" x="40" y="0" width="20" height="20"></use>
+    <use href="#type" x="60" y="0" width="20" height="20"></use>
+    <use href="#component" x="80" y="0" width="20" height="20"></use>
+    <use href="#function" x="100" y="0" width="20" height="20"></use>
+    <use href="#module" x="120" y="0" width="20" height="20"></use>
+    <use href="#folder" x="140" y="0" width="20" height="20"></use>
+    <use href="#file" x="160" y="0" width="20" height="20"></use>
+    <use href="#add" x="180" y="0" width="20" height="20"></use>
+
+    <use href="#scene" x="0" y="20" width="20" height="20"></use>
+    <use href="#picture" x="20" y="20" width="20" height="20"></use>
+    <use href="#library" x="40" y="20" width="20" height="20"></use>
+    <use href="#book" x="60" y="20" width="20" height="20"></use>
+    <use href="#cursor" x="80" y="20" width="20" height="20"></use>
+    <use href="#shapes" x="100" y="20" width="20" height="20"></use>
+    <use href="#square" x="120" y="20" width="20" height="20"></use>
+    <use href="#circle" x="140" y="20" width="20" height="20"></use>
+    <use href="#path" x="160" y="20" width="20" height="20"></use>
+    <use href="#freehand" x="180" y="20" width="20" height="20"></use>
+
+    <use href="#options" x="0" y="40" width="20" height="20"></use>
+    <use href="#save" x="20" y="40" width="20" height="20"></use>
+    <use href="#transition" x="40" y="40" width="20" height="20"></use>
+    <use href="#doll" x="60" y="40" width="20" height="20"></use>
+    <use href="#slideshow" x="80" y="40" width="20" height="20"></use>
+</svg>

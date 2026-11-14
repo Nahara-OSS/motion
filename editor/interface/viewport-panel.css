@@ -1,0 +1,137 @@
+.nahara-ui-viewport-panel {
+    width: 100%;
+    height: 100%;
+
+    > .no-project {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        margin: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1em;
+        width: 50em;
+        height: fit-content;
+
+        > .branding {
+            font-size: 24px;
+            height: 2em;
+        }
+
+        > .separator {
+            border-bottom: 1px solid var(--theme-border-lo);
+        }
+
+        > .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1em;
+
+            > .cell {
+                display: flex;
+                flex-direction: column;
+                margin-inline: -0.5em;
+                gap: 0.2em;
+
+                > h1 {
+                    font-size: inherit;
+                    margin: 0;
+                    margin-inline-start: 0.5em;
+                    margin-block-end: 0.3em;
+                }
+            }
+        }
+    }
+
+    > .has-project {
+        position: relative;
+        width: 100%;
+        height: 100%;
+
+        > canvas {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            background-image: repeating-conic-gradient(var(--theme-container-lo) 0 25%, var(--theme-background) 0 50%);
+            background-size: 1em 1em;
+        }
+
+        > .toolbars {
+            position: absolute;
+            left: 0.5em;
+            top: 0.5em;
+            bottom: 0.5em;
+            gap: 0.5em;
+            display: flex;
+            flex-direction: row;
+            pointer-events: none;
+            align-items: center;
+
+            > .toolbar {
+                display: flex;
+                flex-direction: column;
+                gap: 0.2em;
+                pointer-events: all;
+                background-color: var(--theme-background);
+                border: 1px solid var(--theme-border-lo);
+                padding: 0.2em;
+
+                > * {
+                    width: 2em;
+                    height: 2em;
+                }
+            }
+        }
+
+        > .gizmo {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+
+            > .camera-bounds {
+                fill: none;
+                stroke: var(--theme-border-hi);
+                stroke-width: 1px;
+            }
+
+            > .camera-label {
+                fill: var(--theme-foreground);
+                translate: 0 -0.5em;
+            }
+
+            > .camera-region {
+                fill: var(--theme-container-hi);
+                stroke: none;
+            }
+        }
+
+        > .overlay {
+            position: absolute;
+            display: flex;
+            flex-direction: row;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            margin: auto;
+            width: fit-content;
+            height: 2em;
+            gap: 0.1em;
+            padding: 0.1em;
+            align-items: center;
+            border: 1px solid var(--theme-border-lo);
+            background-color: var(--theme-background);
+        }
+    }
+}

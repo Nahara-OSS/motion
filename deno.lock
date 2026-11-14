@@ -1,0 +1,76 @@
+{
+  "version": "5",
+  "specifiers": {
+    "jsr:@img/internal@~0.1.1": "0.1.1",
+    "jsr:@img/png@~0.1.6": "0.1.6",
+    "jsr:@mary/crc32@~0.1.2": "0.1.2",
+    "jsr:@mary/date-fns@~0.1.4": "0.1.4",
+    "jsr:@mary/ds-queue@~0.1.3": "0.1.3",
+    "jsr:@mary/mutex@0.1": "0.1.0",
+    "jsr:@mary/zip@~0.2.2": "0.2.2",
+    "jsr:@std/cli@1.0.32": "1.0.32",
+    "jsr:@std/internal@^1.0.14": "1.0.14",
+    "npm:preact@^11.1.1": "11.1.1"
+  },
+  "jsr": {
+    "@img/internal@0.1.1": {
+      "integrity": "3f3f58a02d959f913e4715ca1d33064858eb7c32935d351d6357d6bd48b57a70"
+    },
+    "@img/png@0.1.6": {
+      "integrity": "b24db019c96bb0e4fea6a2b1d01c5cc995a56cbc1fe7e40ff77224744e42e37c",
+      "dependencies": [
+        "jsr:@img/internal"
+      ]
+    },
+    "@mary/crc32@0.1.2": {
+      "integrity": "8c1d6255f049e24046e0ddd4007bd8bc0513249ce740ce2837e156312184d6ee"
+    },
+    "@mary/date-fns@0.1.4": {
+      "integrity": "6b3a1306846974376028546b62395fbc40d6564f4c42ab3511cb14a073a4e12b"
+    },
+    "@mary/ds-queue@0.1.3": {
+      "integrity": "a743caa397b924cb08b0bbdffc526eb1ea2d3fc9e675da6edc137c437fc93c76"
+    },
+    "@mary/mutex@0.1.0": {
+      "integrity": "491d33bfd019f5467fd33cf75fcad293800c9954d76332865747201cbeecb0fc"
+    },
+    "@mary/zip@0.2.2": {
+      "integrity": "9528290176b2fb5d4e9070c018a2134f96f4154b50a00c4a7a645a6d9db76179",
+      "dependencies": [
+        "jsr:@mary/crc32",
+        "jsr:@mary/date-fns",
+        "jsr:@mary/ds-queue",
+        "jsr:@mary/mutex"
+      ]
+    },
+    "@std/cli@1.0.32": {
+      "integrity": "188b3a100d6202d64e3f5bd3d799c7fa4f6d77f92cc65eb7f641c1fa0aa92a66",
+      "dependencies": [
+        "jsr:@std/internal"
+      ]
+    },
+    "@std/internal@1.0.14": {
+      "integrity": "291516b3d4c35024d6ffbc0a9df5bf4c64116e05b50012cf846710152d2ffdf7"
+    }
+  },
+  "npm": {
+    "preact@11.1.1": {
+      "integrity": "sha512-vpFVfai437pbuLri7XVeslCPfrEZX6Z1S2gV+MOFrA/kji+NKUXvH7y01EnVjA1guLigfkVp77Sqipd4SIllCg=="
+    }
+  },
+  "workspace": {
+    "members": {
+      "demo": {
+        "dependencies": [
+          "jsr:@img/png@~0.1.6"
+        ]
+      },
+      "editor": {
+        "dependencies": [
+          "jsr:@mary/zip@~0.2.2",
+          "npm:preact@^11.1.1"
+        ]
+      }
+    }
+  }
+}

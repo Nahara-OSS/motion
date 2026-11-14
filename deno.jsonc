@@ -1,0 +1,21 @@
+{
+    "workspace": {
+        "members": [
+            "./demo",
+            "./binary",
+            "./editor",
+            "./geometry",
+            "./helper",
+            "./motion",
+            "./stdlib",
+            "./webgpu"
+        ]
+    },
+    "compilerOptions": {
+        "isolatedDeclarations": true
+    },
+    "fmt": {
+        "lineWidth": 120,
+        "indentWidth": 4
+    }
+}

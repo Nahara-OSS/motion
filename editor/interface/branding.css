@@ -1,0 +1,16 @@
+.nahara-ui-branding {
+    display: inline-flex;
+    flex-direction: row;
+    gap: 0.6em;
+    align-items: center;
+
+    > .logo {
+        width: 2em;
+        height: 2em;
+    }
+
+    > .text {
+        font-weight: bold;
+        line-height: 1;
+    }
+}

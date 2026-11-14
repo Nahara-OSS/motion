@@ -1,0 +1,47 @@
+{
+    "$schema": "https://www.schemastore.org/web-manifest-combined.json",
+    "short_name": "Nahara's Motion",
+    "name": "Nahara's Motion Editor",
+    "start_url": ".",
+    "display": "standalone",
+    "theme_color": "#efefef",
+    "categories": [
+        "productivity"
+    ],
+    "icons": [
+        {
+            "src": "./app-icon-color.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        },
+        {
+            "src": "./app-icon-mono.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "monochrome"
+        },
+        {
+            "src": "./app-icon-color-180px.png",
+            "sizes": "180x180",
+            "type": "image/png"
+        },
+        {
+            "src": "./app-icon-mono-180px.png",
+            "sizes": "180x180",
+            "type": "image/png",
+            "purpose": "monochrome"
+        }
+    ],
+    "screenshots": [
+        {
+            "src": "./screenshot-desktop-welcome.png",
+            "sizes": "2560x1600",
+            "form_factor": "wide"
+        },
+        {
+            "src": "./screenshot-desktop-editing.png",
+            "sizes": "2560x1600",
+            "form_factor": "wide"
+        }
+    ]
+}

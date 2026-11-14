@@ -1,0 +1,21 @@
+:root {
+    --placeholder-background: linear-gradient(
+        45deg,
+        transparent calc(50% - 0.5px),
+        var(--theme-border-lo) calc(50% - 0.5px),
+        var(--theme-border-lo) calc(50% + 0.5px),
+        transparent calc(50% + 0.5px)
+    ), linear-gradient(
+        45deg,
+        transparent 0px,
+        var(--theme-border-lo) 0px,
+        var(--theme-border-lo) 0.5px,
+        transparent 0.5px
+    ), linear-gradient(
+        45deg,
+        transparent calc(100% - 0.5px),
+        var(--theme-border-lo) calc(100% - 0.5px),
+        var(--theme-border-lo) 100%,
+        transparent 100%
+    );
+}
