@@ -1,39 +1,18 @@
 import type * as motion from "@nahara/motion";
 
-export type Rgb = readonly [r: number, g: number, b: number];
-
-export const Rgb: {
-    readonly parse: (input: motion.annotation.AnnotationElement) => Rgb | null;
-    readonly toAnnotation: (data: Rgb) => motion.annotation.AnnotationElement;
-} = {
-    parse: (input) => {
-        if (input.kind != "list") return null;
-        if (input.values.length != 3) return null;
-        if (input.values[0].kind != "number") return null;
-        if (input.values[1].kind != "number") return null;
-        if (input.values[2].kind != "number") return null;
-
-        return [
-            input.values[0].value,
-            input.values[1].value,
-            input.values[2].value,
-        ];
-    },
-    toAnnotation: ([r, g, b]) => ({
-        kind: "list",
-        values: [
-            { kind: "number", value: r },
-            { kind: "number", value: g },
-            { kind: "number", value: b },
-        ],
-    }),
-};
-
+/**
+ * Include editor-only data to module source
+ */
 export interface Editor {
+    /**
+     * Display name
+     */
     readonly name: string | null;
+
+    /**
+     * Description
+     */
     readonly description: string | null;
-    readonly icon: string | null;
-    readonly subtype: string | null;
 }
 
 export const Editor: {
@@ -46,8 +25,6 @@ export const Editor: {
     default: {
         name: null,
         description: null,
-        icon: null,
-        subtype: null,
     },
     parse: (input) => {
         if (input.name != Editor.name) return null;
@@ -55,87 +32,125 @@ export const Editor: {
         return {
             name: input.entries.name?.kind == "string" ? input.entries.name.value : null,
             description: input.entries.description?.kind == "string" ? input.entries.description.value : null,
-            icon: input.entries.icon?.kind == "string" ? input.entries.icon.value : null,
-            subtype: input.entries.subtype?.kind == "string" ? input.entries.subtype.value : null,
         };
     },
-    toAnnotation: ({ name, description, icon, subtype }) => ({
+    toAnnotation: ({ name, description }) => ({
         name: Editor.name,
         entries: {
             ...(name == null ? {} : { name: { kind: "string", value: name } }),
             ...(description == null ? {} : { description: { kind: "string", value: description } }),
-            ...(icon == null ? {} : { icon: { kind: "string", value: icon } }),
-            ...(subtype == null ? {} : { subtype: { kind: "string", value: subtype } }),
         },
     }),
 };
 
-export interface Camera {
-    readonly id: string;
-    readonly name: string | null;
+/**
+ * Mark component as scene
+ */
+export interface Scene {
+    /**
+     * Framebuffer width of the scene
+     */
     readonly width: number;
+
+    /**
+     * Framebuffer height of the scene
+     */
     readonly height: number;
-    readonly background: Rgb | null;
 }
 
-export const Camera: {
+export const Scene: {
     readonly name: string;
-    readonly parse: (input: motion.annotation.Annotation) => Camera | null;
-    readonly toAnnotation: (data: Camera) => motion.annotation.Annotation;
+    readonly default: Scene;
+    readonly parse: (input: motion.annotation.Annotation) => Scene | null;
+    readonly toAnnotation: (data: Scene) => motion.annotation.Annotation;
 } = {
-    name: "camera",
+    name: "scene",
+    default: {
+        width: 1920,
+        height: 1080,
+    },
     parse: (input) => {
-        if (input.name != Camera.name) return null;
-        if (input.entries.id?.kind != "string") return null;
         if (input.entries.width?.kind != "number") return null;
         if (input.entries.height?.kind != "number") return null;
 
         return {
-            id: input.entries.id.value,
-            name: input.entries.name?.kind == "string" ? input.entries.name.value : null,
             width: input.entries.width.value,
             height: input.entries.height.value,
-            background: "background" in input.entries ? Rgb.parse(input.entries.background) : null,
         };
     },
-    toAnnotation: ({ id, name, width, height, background }) => ({
-        name: Camera.name,
+    toAnnotation: ({ width, height }) => ({
+        name: Scene.name,
         entries: {
-            id: { kind: "string", value: id },
-            ...(name == null ? {} : { name: { kind: "string", value: name } }),
-            ...(width == null ? {} : { width: { kind: "number", value: width } }),
-            ...(height == null ? {} : { height: { kind: "number", value: height } }),
-            ...(background == null ? {} : { background: Rgb.toAnnotation(background) }),
+            width: { kind: "number", value: width },
+            height: { kind: "number", value: height },
         },
     }),
 };
 
 /**
- * Mark component as transition
+ * Mark parameter as timeline
  *
- * Transition have 2 sides: side A is the clip to transition from, and side B is the clip to transition into. The
- * component would mix these 2 sides to connect 2 clips seemlessly.
+ * Parameters annotated with `@timeline` are shown as timeline inside Timeline panel and tooling can use this to
+ * automatically provide playback time to the component.
  */
-export interface Transition {
-    readonly progressParameter: string;
-    readonly slotA: string;
-    readonly slotB: string;
+export interface Timeline {
+    /**
+     * Timeline type
+     *
+     * See {@link Timeline.Type} for a list of timeline types.
+     */
+    readonly type: string;
+
+    /**
+     * Playback rate
+     *
+     * For some timeline types, this affect the speed of playback, while other timeline types (e.g. scroll progress) are
+     * not affected by playback rate.
+     */
+    readonly rate: number;
+
+    /**
+     * Timeline duration
+     *
+     * `null` indicate the timeline is infinitely long.
+     */
+    readonly duration: number | null;
 }
 
-/**
- * Mark component as slide show
- *
- * Slides are sorted in clicking order (rather than by slide's timestamp).
- */
-export interface Slideshow {
-    readonly timelineParameter: string;
-    readonly slides: readonly Slide[];
-}
+export const Timeline: {
+    readonly name: string;
+    readonly default: Timeline;
+    readonly Type: {
+        readonly PlaybackTime: string;
+    };
+    readonly parse: (input: motion.annotation.Annotation) => Timeline | null;
+    readonly toAnnotation: (data: Timeline) => motion.annotation.Annotation;
+} = {
+    name: "timeline",
+    default: {
+        type: "playback-time",
+        rate: 1.00,
+        duration: null,
+    },
+    Type: {
+        PlaybackTime: "playback-time",
+    },
+    parse: (input) => {
+        if (input.name != Timeline.name) return null;
+        if (input.entries.type?.kind != "string") return null;
 
-/**
- * Represent a slide
- */
-export interface Slide {
-    readonly at: number;
-    readonly keySlide: boolean;
-}
+        return {
+            type: input.entries.type.value,
+            rate: input.entries.rate?.kind == "number" ? input.entries.rate.value : 1.00,
+            duration: input.entries.duration?.kind == "number" ? input.entries.duration.value : null,
+        };
+    },
+    toAnnotation: ({ type, rate, duration }) => ({
+        name: Timeline.name,
+        entries: {
+            type: { kind: "string", value: type },
+            ...(rate == 1.00 ? {} : { rate: { kind: "number", value: rate } }),
+            ...(duration == null ? {} : { duration: { kind: "number", value: duration } }),
+        },
+    }),
+};
