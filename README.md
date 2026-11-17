@@ -26,14 +26,14 @@ the app manually. Fortunately, this is an easy task to do.
 - Component mechanism ~~stolen directly from ReactJS~~
 - Module system, just like your JavaScript
 - GPU-accelerated motion graphics (powered by WebGPU)
-- ~~A cute cat~~ Okay no we did not include a cat (or did we?).
+- ~~A cute cat~~ Okay no we did not include a cat (or did we?)
 
 ## Licensing
 
 Nahara's Motion Editor is licensed to you under [General Public License, version 3](./editor/LICENSE) or later version
 of GPL. Please read the legal text carefully before you make a fork of the editor.
 
-Nahara's Motion Engine and the supporting libraries are licnesed under [MIT license](./motion/LICENSE). In general, you
+Nahara's Motion Engine and the supporting libraries are licensed under [MIT license](./motion/LICENSE). In general, you
 must keep the copyright notice, but other than that, you can use the engine inside your own apps or games, including the
 proprietary ones.
 
