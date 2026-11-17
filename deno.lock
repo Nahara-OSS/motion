@@ -10,6 +10,7 @@
     "jsr:@mary/zip@~0.2.2": "0.2.2",
     "jsr:@std/cli@1.0.32": "1.0.32",
     "jsr:@std/internal@^1.0.14": "1.0.14",
+    "npm:harfbuzzjs@^1.6.4": "1.6.4",
     "npm:preact@^11.1.1": "11.1.1"
   },
   "jsr": {
@@ -54,6 +55,9 @@
     }
   },
   "npm": {
+    "harfbuzzjs@1.6.4": {
+      "integrity": "sha512-T/PyfhVt1gGR2Tkf5KJUj1DQFkVBXHw552lS1iLEEDhV1Lukb3eq1pk2ov85kgbT2YUiZtJBTak9w+M7YgzUEQ=="
+    },
     "preact@11.1.1": {
       "integrity": "sha512-vpFVfai437pbuLri7XVeslCPfrEZX6Z1S2gV+MOFrA/kji+NKUXvH7y01EnVjA1guLigfkVp77Sqipd4SIllCg=="
     }
@@ -62,7 +66,8 @@
     "members": {
       "demo": {
         "dependencies": [
-          "jsr:@img/png@~0.1.6"
+          "jsr:@img/png@~0.1.6",
+          "npm:harfbuzzjs@^1.6.4"
         ]
       },
       "editor": {

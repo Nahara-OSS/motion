@@ -1,6 +1,7 @@
 {
     "publish": false,
     "imports": {
-        "@img/png": "jsr:@img/png@^0.1.6"
+        "@img/png": "jsr:@img/png@^0.1.6",
+        "harfbuzzjs": "npm:harfbuzzjs@^1.6.4"
     }
 }

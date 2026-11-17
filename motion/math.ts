@@ -100,7 +100,7 @@ export class Matrix4 {
         ];
     }
 
-    toFloat32Array(): Float32Array {
+    toFloat32Array(): Float32Array<ArrayBuffer> {
         return new Float32Array(this.data);
     }
 
