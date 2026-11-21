@@ -1,253 +1,138 @@
 import * as motion from "@nahara/motion";
+import * as helper from "@nahara/motion-helper";
 import type * as geometry from "@nahara/geometry";
-import { NativeFunction, NativeTypeDecl } from "./internal.ts";
+
+const { HostFunction, HostStructType, Type } = helper.host;
+
+const decimalBinaryInputs: readonly helper.host.InputOptions[] = [
+    {
+        type: Type.concrete(motion.core.number),
+        name: "A",
+        debugName: "a",
+        description: "First value",
+    },
+    {
+        type: Type.concrete(motion.core.number),
+        name: "B",
+        debugName: "b",
+        description: "Second value",
+    },
+];
+
+export const add: motion.runtime.Function = new HostFunction({
+    name: "Add",
+    debugName: "add",
+    description: [
+        "Add 2 decimal values together",
+        "Equation: A + B",
+    ],
+    inputs: decimalBinaryInputs,
+    output: Type.concrete(motion.core.number),
+    fn: (_, a: number, b: number) => a + b,
+});
+
+export const sub: motion.runtime.Function = new HostFunction({
+    name: "Subtract",
+    debugName: "sub",
+    description: [
+        "Subtract first value by second value",
+        "Equation: A - B",
+    ],
+    inputs: decimalBinaryInputs,
+    output: Type.concrete(motion.core.number),
+    fn: (_, a: number, b: number) => a - b,
+});
+
+export const mul: motion.runtime.Function = new HostFunction({
+    name: "Multiply",
+    debugName: "mul",
+    description: [
+        "Multiply 2 decimal values together",
+        "Equation: A * B",
+    ],
+    inputs: decimalBinaryInputs,
+    output: Type.concrete(motion.core.number),
+    fn: (_, a: number, b: number) => a * b,
+});
+
+export const div: motion.runtime.Function = new HostFunction({
+    name: "Divide",
+    debugName: "div",
+    description: [
+        "Divide first value by second value",
+        "Equation: A / B",
+    ],
+    inputs: decimalBinaryInputs,
+    output: Type.concrete(motion.core.number),
+    fn: (_, a: number, b: number) => a / b,
+});
 
 export type Vec2 = geometry.Vec2;
-export const Vec2: motion.runtime.TypeDecl = new NativeTypeDecl(() => ({
-    annotations: [
-        motion.annotation.annotate("editor", {
-            name: "2D Vector",
-            icon: "vector",
-            description: "Represent 2D position or direction",
-        }),
+export const Vec2: motion.runtime.Struct = new HostStructType<Vec2>({
+    name: "2D vector",
+    debugName: "Vec2",
+    description: [
+        "A pair of 2 decimal values",
+        "A vector can represent a position or direction in space.",
     ],
-    typeParams: [],
-    family: "struct",
+    default: () => [0, 0],
+    create: (_, { x = 0, y = 0 }) => [x, y],
     fields: {
-        x: {
-            annotations: [
-                motion.annotation.annotate("editor", {
-                    name: "X",
-                    icon: "x",
-                    description: "X position/direction",
-                }),
-            ],
-            type: { kind: "fresh", decl: motion.runtime.coreModule.number, typeParams: [] },
-            get: (_, v) => (v as geometry.Vec2)[0],
-        },
-        y: {
-            annotations: [
-                motion.annotation.annotate("editor", {
-                    name: "Y",
-                    icon: "y",
-                    description: "Y position/direction",
-                }),
-            ],
-            type: { kind: "fresh", decl: motion.runtime.coreModule.number, typeParams: [] },
-            get: (_, v) => (v as geometry.Vec2)[1],
-        },
+        x: { name: "X", type: Type.concrete(motion.core.number), get: (v) => v[0] },
+        y: { name: "Y", type: Type.concrete(motion.core.number), get: (v) => v[1] },
     },
-    default: () => [0, 0] satisfies geometry.Vec2,
-    create: (_, { x, y }) => [x as number, y as number] satisfies geometry.Vec2,
-    methods: {
-        add: {
-            annotations: [
-                motion.annotation.annotate("editor", {
-                    name: "Add vector",
-                    icon: "add",
-                    description: "Add vector values together",
-                }),
-            ],
-            typeParams: [],
-            inputs: [
-                {
-                    annotations: [
-                        motion.annotation.annotate("editor", {
-                            name: "Other",
-                            icon: "vector",
-                            description: "The other 2D vector",
-                        }),
-                    ],
-                    type: { kind: "fresh", decl: Vec2, typeParams: [] },
-                },
-            ],
-            returnType: { kind: "fresh", decl: Vec2, typeParams: [] },
-            apply: (_, [x1, y1]: geometry.Vec2, [x2, y2]: geometry.Vec2) => [x1 + x2, y1 + y2],
-        },
-    },
-}));
+});
 
-export type Transform = motion.math.Matrix4;
-export const Transform: motion.runtime.TypeDecl = new NativeTypeDecl(() => ({
-    annotations: [
-        motion.annotation.annotate("editor", {
-            name: "Transform",
-            icon: "transform",
-            description: "Represent a transformation on graphics",
-        }),
+export type Transformation = motion.math.Matrix4;
+export const Transformation: motion.runtime.Struct = new HostStructType<Transformation>({
+    name: "Transformation",
+    debugName: "Transformation",
+    description: [
+        "Represent a transformation",
+        "A transformation can be used to translate (move), rotate or scale graphics, points or directions.",
+        "Transformation can be created from 4x4 matrix components that representing the transformation.",
     ],
-    typeParams: [],
-    family: "native",
     default: () => motion.math.Matrix4.IDENTITY,
-    methods: {
-        map: {
-            annotations: [
-                motion.annotation.annotate("editor", {
-                    name: "Map coordinates",
-                    icon: "vector",
-                    description: "Transform coordinates to other space with this transformation",
-                }),
-            ],
-            typeParams: [],
-            inputs: [
-                {
-                    annotations: [
-                        motion.annotation.annotate("editor", {
-                            name: "Value",
-                            icon: "vector",
-                            description: "Point in space or direction",
-                        }),
-                    ],
-                    type: { kind: "fresh", decl: Vec2, typeParams: [] },
-                },
-            ],
-            returnType: { kind: "fresh", decl: Vec2, typeParams: [] },
-            apply: (_, self: Transform, [x, y]: Vec2) => {
-                const [rx, ry] = self.map(x, y, 0, 1);
-                return [rx, ry];
-            },
-        },
-        translate: {
-            annotations: [
-                motion.annotation.annotate("editor", {
-                    name: "Translate",
-                    icon: "translation",
-                    description: "Move the graphics",
-                }),
-            ],
-            typeParams: [],
-            inputs: [
-                {
-                    annotations: [
-                        motion.annotation.annotate("editor", {
-                            name: "Translation",
-                            icon: "vector",
-                            description: "Offset to move the graphics",
-                        }),
-                    ],
-                    type: { kind: "fresh", decl: Vec2, typeParams: [] },
-                },
-            ],
-            returnType: { kind: "fresh", decl: Transform, typeParams: [] },
-            apply: (_, self: Transform, [tx, ty]: Vec2) => {
-                return motion.math.Matrix4.mul(self, motion.math.Matrix4.translate(tx, ty, 0));
-            },
-        },
-        rotate: {
-            annotations: [
-                motion.annotation.annotate("editor", {
-                    name: "Rotate",
-                    icon: "rotation",
-                    description: "Rotate the graphics",
-                }),
-            ],
-            typeParams: [],
-            inputs: [
-                {
-                    annotations: [
-                        motion.annotation.annotate("editor", {
-                            name: "Rotation",
-                            icon: "rotation",
-                            subtype: "angle",
-                            description: "Angle to rotate the graphics",
-                        }),
-                    ],
-                    type: { kind: "fresh", decl: motion.runtime.coreModule.number, typeParams: [] },
-                },
-            ],
-            returnType: { kind: "fresh", decl: Transform, typeParams: [] },
-            apply: (_, self: Transform, angle: number) => {
-                return motion.math.Matrix4.mul(self, motion.math.Matrix4.rotate(0, 0, 1, angle));
-            },
-        },
-        scale: {
-            annotations: [
-                motion.annotation.annotate("editor", {
-                    name: "Scale",
-                    icon: "scale",
-                    description: "Scale (resize) the graphics",
-                }),
-            ],
-            typeParams: [],
-            inputs: [
-                {
-                    annotations: [
-                        motion.annotation.annotate("editor", {
-                            name: "Scale",
-                            icon: "scale",
-                            description: "Values to scale the graphics",
-                        }),
-                    ],
-                    type: { kind: "fresh", decl: Vec2, typeParams: [] },
-                },
-            ],
-            returnType: { kind: "fresh", decl: Transform, typeParams: [] },
-            apply: (_, self: Transform, [sx, sy]: Vec2) => {
-                return motion.math.Matrix4.mul(self, motion.math.Matrix4.scale(sx, sy, 1));
-            },
-        },
+    create: (_, {
+        m11 = 1,
+        m12 = 0,
+        m13 = 0,
+        m14 = 0,
+        m21 = 0,
+        m22 = 1,
+        m23 = 0,
+        m24 = 0,
+        m31 = 0,
+        m32 = 0,
+        m33 = 1,
+        m34 = 0,
+        m41 = 0,
+        m42 = 0,
+        m43 = 0,
+        m44 = 1,
+    }) =>
+        motion.math.Matrix4.fromArray([
+            [m11, m12, m13, m14],
+            [m21, m22, m23, m24],
+            [m31, m32, m33, m34],
+            [m41, m42, m43, m44],
+        ].flat()),
+    fields: {
+        m11: { name: "Row 1 : Col 1", type: Type.concrete(motion.core.number), get: (self) => self.get(0) },
+        m12: { name: "Row 2 : Col 1", type: Type.concrete(motion.core.number), get: (self) => self.get(1) },
+        m13: { name: "Row 3 : Col 1", type: Type.concrete(motion.core.number), get: (self) => self.get(2) },
+        m14: { name: "Row 4 : Col 1", type: Type.concrete(motion.core.number), get: (self) => self.get(3) },
+        m21: { name: "Row 1 : Col 2", type: Type.concrete(motion.core.number), get: (self) => self.get(4) },
+        m22: { name: "Row 2 : Col 2", type: Type.concrete(motion.core.number), get: (self) => self.get(5) },
+        m23: { name: "Row 3 : Col 2", type: Type.concrete(motion.core.number), get: (self) => self.get(6) },
+        m24: { name: "Row 4 : Col 2", type: Type.concrete(motion.core.number), get: (self) => self.get(7) },
+        m31: { name: "Row 1 : Col 3", type: Type.concrete(motion.core.number), get: (self) => self.get(8) },
+        m32: { name: "Row 2 : Col 3", type: Type.concrete(motion.core.number), get: (self) => self.get(9) },
+        m33: { name: "Row 3 : Col 3", type: Type.concrete(motion.core.number), get: (self) => self.get(10) },
+        m34: { name: "Row 4 : Col 3", type: Type.concrete(motion.core.number), get: (self) => self.get(11) },
+        m41: { name: "Row 1 : Col 4", type: Type.concrete(motion.core.number), get: (self) => self.get(12) },
+        m42: { name: "Row 2 : Col 4", type: Type.concrete(motion.core.number), get: (self) => self.get(13) },
+        m43: { name: "Row 3 : Col 4", type: Type.concrete(motion.core.number), get: (self) => self.get(14) },
+        m44: { name: "Row 4 : Col 4", type: Type.concrete(motion.core.number), get: (self) => self.get(15) },
     },
-}));
-
-export const combinedTransform: motion.runtime.Function = new NativeFunction(() => ({
-    annotations: [
-        motion.annotation.annotate("editor", {
-            name: "Combined transform",
-            icon: "transform",
-            description: "Declare the initial transformation from origin, translation, rotation and scale",
-        }),
-    ],
-    typeParams: [],
-    inputs: [
-        {
-            annotations: [
-                motion.annotation.annotate("editor", {
-                    name: "Origin",
-                    icon: "point",
-                    description: "Object's origin for scale and rotation",
-                }),
-            ],
-            type: { kind: "fresh", decl: Vec2, typeParams: [] },
-        },
-        {
-            annotations: [
-                motion.annotation.annotate("editor", {
-                    name: "Offset",
-                    icon: "translation",
-                    description: "Object offset relative to parent's origin",
-                }),
-            ],
-            type: { kind: "fresh", decl: Vec2, typeParams: [] },
-        },
-        {
-            annotations: [
-                motion.annotation.annotate("editor", {
-                    name: "Rotation",
-                    icon: "rotation",
-                    subtype: "angle",
-                    description: "Object's rotation around its origin",
-                }),
-            ],
-            type: { kind: "fresh", decl: motion.runtime.coreModule.number, typeParams: [] },
-        },
-        {
-            annotations: [
-                motion.annotation.annotate("editor", {
-                    name: "Scale",
-                    icon: "scale",
-                    description: "Object's scale around its origin",
-                }),
-            ],
-            type: { kind: "fresh", decl: Vec2, typeParams: [] },
-        },
-    ],
-    returnType: { kind: "fresh", decl: Transform, typeParams: [] },
-    apply: (_, [ox, oy]: Vec2, [tx, ty]: Vec2, angle: number, [sx, sy]: Vec2) => {
-        return motion.math.Matrix4.mul(
-            motion.math.Matrix4.translate(-ox, -oy, 0),
-            motion.math.Matrix4.rotate(0, 0, 1, angle),
-            motion.math.Matrix4.scale(sx, sy, 1),
-            motion.math.Matrix4.translate(ox + tx, oy + ty, 0),
-        );
-    },
-}));
+});

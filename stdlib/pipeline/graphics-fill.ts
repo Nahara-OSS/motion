@@ -2,138 +2,186 @@ import type * as motion from "@nahara/motion";
 import * as webgpu from "@nahara/webgpu";
 import shaderCode from "./graphics-fill.wgsl" with { type: "text" };
 
-export function create(env: motion.graphics.GraphicsEnv): (options: RenderOptions) => void {
-    const { device, staging } = env;
+export interface GraphicsFillRenderOptions {
+    readonly encoder: GPUCommandEncoder;
+    readonly target: {
+        readonly format: GPUTextureFormat;
+        readonly view: GPUTextureView;
+    };
+    readonly stencil?: {
+        readonly format: GPUTextureFormat;
+        readonly view: GPUTextureView;
+        readonly rule: "even-odd" | "non-zero";
+    };
+    readonly blendState: GPUBlendState;
+    readonly source: GPUTextureView;
+    readonly opacity: number;
+}
 
-    const fillInfoBgLayout = device.createBindGroupLayout({
-        entries: [
-            { binding: 0, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
-        ],
-    });
-    const sourceBgLayout = device.createBindGroupLayout({
-        entries: [
-            { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
-            { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
-        ],
-    });
-    const pipelineLayout = device.createPipelineLayout({
-        bindGroupLayouts: [
-            fillInfoBgLayout,
-            sourceBgLayout,
-        ],
-    });
-    const shader = device.createShaderModule({
-        code: shaderCode,
-    });
-    const pipelineCache = new webgpu.Cached<
-        {
-            colorFormat: GPUTextureFormat;
-            stencilFormat: GPUTextureFormat;
-            blend: GPUBlendState;
-            winding: RenderOptions["winding"];
-        },
-        GPURenderPipeline
-    >({
-        deriveKey: ({ colorFormat, stencilFormat, blend, winding }) => {
-            return `${colorFormat}::${stencilFormat}::${webgpu.blendStateKey(blend)}::${winding}`;
-        },
-        factory: ({ colorFormat, stencilFormat, blend, winding }) => (device.createRenderPipeline({
-            layout: pipelineLayout,
-            vertex: {
-                module: shader,
-                entryPoint: "vertexMain",
+export class GraphicsFill implements Disposable {
+    #cache = new webgpu.Cache();
+    #shader: GPUShaderModule;
+    #uniform: GPUBuffer;
+    #sampler: GPUSampler;
+    #pipelineLayout: GPUPipelineLayout;
+    #infoBindGroup: GPUBindGroup;
+    #sourceBindGroupLayout: GPUBindGroupLayout;
+
+    constructor(public readonly graphics: motion.env.GraphicsEnv) {
+        const {
+            shaders: { main: shader },
+            buffers: { uniform },
+            samplers: { main: sampler },
+            bindGroupLayouts: { source: sourceBindGroupLayout },
+            bindGroups: { info: infoBindGroup },
+            pipelineLayouts: { main: pipelineLayout },
+        } = webgpu.createAndLinkResources({
+            device: graphics.device,
+            shaders: {
+                main: { code: shaderCode },
             },
-            fragment: {
-                module: shader,
-                entryPoint: "fragmentMain",
-                targets: [{ format: colorFormat, blend }],
-            },
-            depthStencil: {
-                format: stencilFormat,
-                depthWriteEnabled: false,
-                stencilReadMask: winding == "non-zero" ? 0xFF : 0x01,
-                stencilWriteMask: 0x00,
-                stencilBack: {
-                    compare: "not-equal",
-                    depthFailOp: "keep",
-                    failOp: "keep",
-                    passOp: "keep",
-                },
-                stencilFront: {
-                    compare: "not-equal",
-                    depthFailOp: "keep",
-                    failOp: "keep",
-                    passOp: "keep",
+            buffers: {
+                uniform: {
+                    size: Float32Array.BYTES_PER_ELEMENT * 4,
+                    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
                 },
             },
-            primitive: {
-                topology: "triangle-strip",
+            samplers: {
+                main: {},
             },
-        })),
-    });
+            bindGroupLayouts: {
+                info: {
+                    entries: [
+                        { binding: 0, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform" } },
+                    ],
+                },
+                source: {
+                    entries: [
+                        { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
+                        { binding: 1, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+                    ],
+                },
+            },
+            bindGroups: {
+                info: ({ bindGroupLayouts, buffers }) => ({
+                    layout: bindGroupLayouts.info,
+                    entries: [
+                        { binding: 0, resource: { buffer: buffers.uniform } },
+                    ],
+                }),
+            },
+            pipelineLayouts: {
+                main: ({ bindGroupLayouts }) => ({
+                    bindGroupLayouts: [
+                        bindGroupLayouts.info,
+                        bindGroupLayouts.source,
+                    ],
+                }),
+            },
+        });
 
-    const fillInfo = device.createBuffer({
-        size: Float32Array.BYTES_PER_ELEMENT,
-        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
-    const fillInfoBg = device.createBindGroup({
-        layout: fillInfoBgLayout,
-        entries: [
-            { binding: 0, resource: { buffer: fillInfo } },
-        ],
-    });
+        this.#shader = shader;
+        this.#uniform = uniform;
+        this.#sampler = sampler;
+        this.#pipelineLayout = pipelineLayout;
+        this.#infoBindGroup = infoBindGroup;
+        this.#sourceBindGroupLayout = sourceBindGroupLayout;
+    }
 
-    const sourceSampler = device.createSampler({
-        minFilter: "linear",
-        magFilter: "nearest",
-    });
+    render(options: GraphicsFillRenderOptions): void {
+        const { encoder, target, stencil, blendState, source, opacity } = options;
+        const { device, staging } = this.graphics;
+        const pipeline = this.#cache.get({
+            key: [
+                target.format,
+                stencil?.format ?? "<no-stencil>",
+                stencil?.rule ?? "<no-fill-rule>",
+                webgpu.blendStateKey(blendState),
+            ].join("::"),
+            factory: () => (device.createRenderPipeline({
+                layout: this.#pipelineLayout,
+                primitive: {
+                    topology: "triangle-strip",
+                },
+                vertex: {
+                    module: this.#shader,
+                },
+                fragment: {
+                    module: this.#shader,
+                    targets: [{ format: target.format, blend: blendState }],
+                },
+                depthStencil: stencil == null ? undefined : {
+                    format: stencil.format,
+                    depthWriteEnabled: false,
+                    stencilReadMask: stencil.rule == "non-zero" ? 0xFF : 0x01,
+                    stencilWriteMask: 0x00,
+                    stencilBack: {
+                        compare: "not-equal",
+                        depthFailOp: "keep",
+                        failOp: "keep",
+                        passOp: "keep",
+                    },
+                    stencilFront: {
+                        compare: "not-equal",
+                        depthFailOp: "keep",
+                        failOp: "keep",
+                        passOp: "keep",
+                    },
+                },
+            })),
+        });
 
-    return (options) => {
-        const { encoder, colorFormat, stencilFormat, colorView, stencilView, winding, blendState, sourceView, alpha } =
-            options;
-
-        const uniformData = new Float32Array(staging.write(fillInfo, 0, fillInfo.size, encoder));
-        uniformData[0] = alpha;
-
-        const sourceBg = device.createBindGroup({
-            layout: sourceBgLayout,
+        const sourceBindGroup = device.createBindGroup({
+            layout: this.#sourceBindGroupLayout,
             entries: [
-                { binding: 0, resource: sourceSampler },
-                { binding: 1, resource: sourceView },
+                { binding: 0, resource: this.#sampler },
+                { binding: 1, resource: source },
             ],
         });
 
-        const pipeline = pipelineCache.get({ colorFormat, stencilFormat, blend: blendState, winding });
+        const uniformData = new Float32Array(staging.write(this.#uniform, 0, this.#uniform.size, encoder));
+        uniformData[0] = opacity;
+
         const fillPass = encoder.beginRenderPass({
             colorAttachments: [
                 {
-                    view: colorView,
+                    view: target.view,
                     loadOp: "load",
                     storeOp: "store",
                 },
             ],
-            depthStencilAttachment: {
-                view: stencilView,
+            depthStencilAttachment: stencil == null ? undefined : {
+                view: stencil.view,
                 depthReadOnly: true,
                 stencilReadOnly: true,
             },
         });
         fillPass.setPipeline(pipeline);
-        fillPass.setBindGroup(0, fillInfoBg);
-        fillPass.setBindGroup(1, sourceBg);
+        fillPass.setBindGroup(0, this.#infoBindGroup);
+        fillPass.setBindGroup(1, sourceBindGroup);
         fillPass.draw(4, 1, 0, 0);
         fillPass.end();
-    };
-}
+    }
 
-export interface RenderOptions {
-    readonly encoder: GPUCommandEncoder;
-    readonly colorFormat: GPUTextureFormat;
-    readonly stencilFormat: GPUTextureFormat;
-    readonly colorView: GPUTextureView;
-    readonly stencilView: GPUTextureView;
-    readonly winding: "non-zero" | "even-odd";
-    readonly blendState: GPUBlendState;
-    readonly sourceView: GPUTextureView;
-    readonly alpha: number;
+    static cache(graphics: motion.env.GraphicsEnv): GraphicsFill {
+        return graphics.cache.get({
+            key: GraphicsFill,
+            factory: () => new GraphicsFill(graphics),
+            cycle: (x) => x.beginCycle(),
+            destroy: (x) => x.destroy(),
+        });
+    }
+
+    beginCycle(): void {
+        this.#cache.beginCycle();
+    }
+
+    destroy(): void {
+        this.#cache.invalidateAll();
+        this.#uniform.destroy();
+    }
+
+    [Symbol.dispose](): void {
+        this.destroy();
+    }
 }

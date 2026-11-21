@@ -1,5 +1,9 @@
 const doNothing = () => {};
 
+export interface CacheCreateOptions {
+    debug?: string | null;
+}
+
 /**
  * Cache implementation for caching values
  *
@@ -11,7 +15,12 @@ const doNothing = () => {};
  * 30 to 60 frames).
  */
 export class Cache implements Disposable {
+    #debug: string | null;
     #entries = new Map<unknown, CacheEntry>();
+
+    constructor(options: CacheCreateOptions = {}) {
+        this.#debug = options.debug ?? null;
+    }
 
     /**
      * Get cached value or create new one if not cached
@@ -29,6 +38,10 @@ export class Cache implements Disposable {
                     destroy: options.destroy ?? doNothing,
                 },
             );
+
+            if (this.#debug != null) {
+                console.log(`%c${this.#debug} %cCached ${options.key}`, "color:rebeccapurple", "");
+            }
         }
 
         entry.life = options.retention ?? null;
@@ -44,7 +57,7 @@ export class Cache implements Disposable {
         return this.get({
             key: options.key,
             retention: options.retention,
-            factory: () => new Cache(),
+            factory: () => new Cache({ debug: this.#debug == null ? null : `${this.#debug}/${options.key}` }),
             cycle: (cache) => cache.beginCycle(),
             destroy: (cache) => cache.invalidateAll(),
         });
@@ -56,6 +69,10 @@ export class Cache implements Disposable {
      * Usually called before starting a new frame.
      */
     beginCycle(): void {
+        if (this.#debug != null) {
+            console.log(`%c${this.#debug} %cBegin cycle`, "color:rebeccapurple", "");
+        }
+
         this.#entries.forEach((entry, key) => {
             if (entry.life == null || entry.life-- != 0) {
                 entry.cycle(entry.value);
@@ -64,7 +81,17 @@ export class Cache implements Disposable {
 
             entry.destroy(entry.value);
             this.#entries.delete(key);
+
+            if (this.#debug != null) {
+                console.log(`%c${this.#debug} %cDropped ${key} (auto)`, "color:rebeccapurple", "");
+            }
         });
+    }
+
+    endCycle(): void {
+        if (this.#debug) {
+            console.log(`%c${this.#debug} %cEnd cycle`, "color:rebeccapurple", "");
+        }
     }
 
     /**
@@ -72,7 +99,15 @@ export class Cache implements Disposable {
      */
     invalidateAll(): void {
         if (this.#entries.size == 0) return;
-        this.#entries.forEach(({ value, destroy }) => destroy(value));
+
+        this.#entries.forEach(({ value, destroy }, key) => {
+            destroy(value);
+
+            if (this.#debug != null) {
+                console.log(`%c${this.#debug} %cDropped ${key} (invalidate all)`, "color:rebeccapurple", "");
+            }
+        });
+
         this.#entries = new Map();
     }
 

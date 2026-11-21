@@ -30,25 +30,34 @@ export interface Annotation {
     readonly entries: Readonly<Record<string, AnnotationElement>>;
 }
 
+export enum AnnotationType {
+    Reserved = 0x00,
+    Number = 0x01,
+    Boolean = 0x02,
+    String = 0x03,
+    List = 0x04,
+    Dictionary = 0x05,
+}
+
 export type AnnotationElement =
-    | PrimitiveAnnotationElement<"number", number>
-    | PrimitiveAnnotationElement<"boolean", boolean>
-    | PrimitiveAnnotationElement<"string", string>
+    | PrimitiveAnnotationElement<AnnotationType.Number, number>
+    | PrimitiveAnnotationElement<AnnotationType.Boolean, boolean>
+    | PrimitiveAnnotationElement<AnnotationType.String, string>
     | ListAnnotationElement
     | DictionaryAnnotationElement;
 
-export interface PrimitiveAnnotationElement<T extends string, V> {
-    readonly kind: T;
+export interface PrimitiveAnnotationElement<T extends AnnotationType, V> {
+    readonly type: T;
     readonly value: V;
 }
 
 export interface ListAnnotationElement {
-    readonly kind: "list";
+    readonly type: AnnotationType.List;
     readonly values: readonly AnnotationElement[];
 }
 
 export interface DictionaryAnnotationElement {
-    readonly kind: "dictionary";
+    readonly type: AnnotationType.Dictionary;
     readonly values: Readonly<Record<string, AnnotationElement>>;
 }
 
@@ -72,13 +81,17 @@ export function annotate(name: string, entries: Readonly<Record<string, Annotati
 }
 
 function convertElement(e: AnnotationXElement): AnnotationElement {
-    if (typeof e == "number") return { kind: "number", value: e };
-    if (typeof e == "string") return { kind: "string", value: e };
-    if (typeof e == "boolean") return { kind: "boolean", value: e };
-    if (e instanceof Array) return { kind: "list", values: e.map(convertElement) };
+    if (typeof e == "number") return { type: AnnotationType.Number, value: e };
+    if (typeof e == "string") return { type: AnnotationType.String, value: e };
+    if (typeof e == "boolean") return { type: AnnotationType.Boolean, value: e };
+    if (e instanceof Array) return { type: AnnotationType.List, values: e.map(convertElement) };
 
     return {
-        kind: "dictionary",
-        values: Object.fromEntries(Object.entries(e).map(([name, e]) => [name, convertElement(e)] as const)),
+        type: AnnotationType.Dictionary,
+        values: Object.fromEntries(
+            Object
+                .entries(e)
+                .map(([name, e]) => [name, convertElement(e)] as const),
+        ),
     };
 }

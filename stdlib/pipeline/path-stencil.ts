@@ -5,83 +5,123 @@ import shaderCode from "./path-stencil.wgsl" with { type: "text" };
 
 export const VERTEX_SIZE: number = Float32Array.BYTES_PER_ELEMENT * 2;
 
-export function create(env: motion.graphics.GraphicsEnv): (options: RenderOptions) => void {
-    const { device, vertexBufferPool, vertexBufferSize, staging } = env;
+export interface PathStencilRenderOptions {
+    readonly encoder: GPUCommandEncoder;
+    readonly stencil: {
+        readonly format: GPUTextureFormat;
+        readonly view: GPUTextureView;
+    };
+    readonly transform: {
+        readonly proj: motion.math.Matrix4;
+        readonly view: motion.math.Matrix4;
+        readonly model: motion.math.Matrix4;
+    };
+    readonly paths: Iterable<geometry.path.Path>;
+}
 
-    const fillBgLayout = device.createBindGroupLayout({
-        entries: [
-            { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "uniform" } },
-        ],
-    });
-    const pipelineLayout = device.createPipelineLayout({
-        bindGroupLayouts: [
-            fillBgLayout,
-        ],
-    });
-    const shader = device.createShaderModule({
-        code: shaderCode,
-    });
-    const pipelineCache = new webgpu.Cached<GPUTextureFormat, GPURenderPipeline>({
-        factory: (format) => (device.createRenderPipeline({
-            layout: pipelineLayout,
-            vertex: {
-                module: shader,
-                entryPoint: "vertexMain",
-                buffers: [
-                    {
-                        stepMode: "vertex",
-                        arrayStride: VERTEX_SIZE,
-                        attributes: [
-                            { shaderLocation: 0, offset: 0, format: "float32x2" },
-                        ],
+export class PathStencil implements Disposable {
+    #cache = new webgpu.Cache();
+    #shader: GPUShaderModule;
+    #uniform: GPUBuffer;
+    #pipelineLayout: GPUPipelineLayout;
+    #bindGroup: GPUBindGroup;
+
+    constructor(public graphics: motion.env.GraphicsEnv) {
+        const {
+            shaders: { main: shader },
+            buffers: { uniform },
+            pipelineLayouts: { main: pipelineLayout },
+            bindGroups: { main: bindGroup },
+        } = webgpu.createAndLinkResources({
+            device: graphics.device,
+            shaders: {
+                main: { code: shaderCode },
+            },
+            buffers: {
+                uniform: {
+                    size: Float32Array.BYTES_PER_ELEMENT * 16 * 3,
+                    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+                },
+            },
+            bindGroupLayouts: {
+                main: {
+                    entries: [
+                        { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: "uniform" } },
+                    ],
+                },
+            },
+            bindGroups: {
+                main: ({ bindGroupLayouts, buffers }) => ({
+                    layout: bindGroupLayouts.main,
+                    entries: [
+                        { binding: 0, resource: { buffer: buffers.uniform } },
+                    ],
+                }),
+            },
+            pipelineLayouts: {
+                main: ({ bindGroupLayouts }) => ({
+                    bindGroupLayouts: [
+                        bindGroupLayouts.main,
+                    ],
+                }),
+            },
+        });
+
+        this.#shader = shader;
+        this.#uniform = uniform;
+        this.#pipelineLayout = pipelineLayout;
+        this.#bindGroup = bindGroup;
+    }
+
+    render(options: PathStencilRenderOptions): void {
+        const { encoder, stencil, transform, paths } = options;
+        const { device, staging, vertexBufferSize, vertexBufferPool } = this.graphics;
+        const pipeline = this.#cache.get({
+            key: [stencil.view].join("::"),
+            factory: () => (device.createRenderPipeline({
+                layout: this.#pipelineLayout,
+                primitive: {
+                    topology: "triangle-list",
+                },
+                vertex: {
+                    module: this.#shader,
+                    buffers: [
+                        {
+                            stepMode: "vertex",
+                            arrayStride: VERTEX_SIZE,
+                            attributes: [
+                                { shaderLocation: 0, offset: 0, format: "float32x2" },
+                            ],
+                        },
+                    ],
+                },
+                depthStencil: {
+                    format: stencil.format,
+                    depthCompare: "always",
+                    depthWriteEnabled: false,
+                    stencilReadMask: 0xFF,
+                    stencilWriteMask: 0xFF,
+                    stencilBack: {
+                        compare: "always",
+                        depthFailOp: "keep",
+                        failOp: "keep",
+                        passOp: "decrement-wrap",
                     },
-                ],
-            },
-            depthStencil: {
-                format,
-                depthCompare: "always",
-                depthWriteEnabled: false,
-                stencilReadMask: 0xFF,
-                stencilWriteMask: 0xFF,
-                stencilBack: {
-                    compare: "always",
-                    depthFailOp: "keep",
-                    failOp: "keep",
-                    passOp: "decrement-wrap",
+                    stencilFront: {
+                        compare: "always",
+                        depthFailOp: "keep",
+                        failOp: "keep",
+                        passOp: "increment-wrap",
+                    },
                 },
-                stencilFront: {
-                    compare: "always",
-                    depthFailOp: "keep",
-                    failOp: "keep",
-                    passOp: "increment-wrap",
-                },
-            },
-            primitive: {
-                topology: "triangle-list",
-            },
-        })),
-    });
+            })),
+        });
 
-    const uniform = device.createBuffer({
-        size: Float32Array.BYTES_PER_ELEMENT * 16 * 3,
-        usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.UNIFORM,
-    });
-    const fillBg = device.createBindGroup({
-        layout: fillBgLayout,
-        entries: [
-            { binding: 0, resource: { buffer: uniform } },
-        ],
-    });
-
-    return (options) => {
-        const { encoder, stencilFormat, stencilView, projMat, viewMat, modelMat, path: pathList } = options;
-        const pipeline = pipelineCache.get(stencilFormat);
         const borrowedVertexBuffers: { handle: webgpu.Borrowed<GPUBuffer>; count: number }[] = [];
-
-        const uniformData = new Float32Array(staging.write(uniform, 0, uniform.size, encoder));
-        projMat.setToArray(uniformData, 0);
-        viewMat.setToArray(uniformData, 16);
-        modelMat.setToArray(uniformData, 32);
+        const uniformData = new Float32Array(staging.write(this.#uniform, 0, this.#uniform.size, encoder));
+        transform.proj.setToArray(uniformData, 0);
+        transform.view.setToArray(uniformData, 16);
+        transform.model.setToArray(uniformData, 32);
 
         const stream = staging.stream(
             Math.floor(vertexBufferSize / VERTEX_SIZE / 3) * VERTEX_SIZE * 3,
@@ -93,7 +133,7 @@ export function create(env: motion.graphics.GraphicsEnv): (options: RenderOption
             },
         );
 
-        for (const path of pathList) {
+        for (const path of paths) {
             const bounds = geometry.path.boundsOf(path);
             const center: geometry.Vec2 = [(bounds.left + bounds.right) / 2, (bounds.top + bounds.bottom) / 2];
 
@@ -118,13 +158,12 @@ export function create(env: motion.graphics.GraphicsEnv): (options: RenderOption
             data[5] = path.segments[0].start[1];
         }
 
-        stream.write(VERTEX_SIZE);
         stream.flush();
 
         const stencilPass = encoder.beginRenderPass({
             colorAttachments: [],
             depthStencilAttachment: {
-                view: stencilView,
+                view: stencil.view,
                 depthReadOnly: true,
                 stencilReadOnly: false,
                 stencilLoadOp: "clear",
@@ -134,7 +173,7 @@ export function create(env: motion.graphics.GraphicsEnv): (options: RenderOption
         });
 
         stencilPass.setPipeline(pipeline);
-        stencilPass.setBindGroup(0, fillBg);
+        stencilPass.setBindGroup(0, this.#bindGroup);
 
         for (const { handle, count } of borrowedVertexBuffers) {
             stencilPass.setVertexBuffer(0, handle.resource, 0, count * VERTEX_SIZE);
@@ -143,15 +182,27 @@ export function create(env: motion.graphics.GraphicsEnv): (options: RenderOption
         }
 
         stencilPass.end();
-    };
-}
+    }
 
-export interface RenderOptions {
-    readonly encoder: GPUCommandEncoder;
-    readonly stencilFormat: GPUTextureFormat;
-    readonly stencilView: GPUTextureView;
-    readonly projMat: motion.math.Matrix4;
-    readonly viewMat: motion.math.Matrix4;
-    readonly modelMat: motion.math.Matrix4;
-    readonly path: Iterable<geometry.path.Path>;
+    static cache(graphics: motion.env.GraphicsEnv): PathStencil {
+        return graphics.cache.get({
+            key: PathStencil,
+            factory: () => new PathStencil(graphics),
+            cycle: (x) => x.beginCycle(),
+            destroy: (x) => x.destroy(),
+        });
+    }
+
+    beginCycle(): void {
+        this.#cache.beginCycle();
+    }
+
+    destroy(): void {
+        this.#cache.invalidateAll();
+        this.#uniform.destroy();
+    }
+
+    [Symbol.dispose](): void {
+        this.destroy();
+    }
 }

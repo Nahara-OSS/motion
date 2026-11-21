@@ -243,8 +243,17 @@ export class StagingBelt implements Disposable {
      * This must only be called after the command buffer holding buffer copy commands is submitted. This may be called
      * right after the command buffer is submitted, though usually call to this function is located at the start of the
      * frame (before anything else used staging belt).
+     *
+     * **Note on `jsr:@gfx/dwm`**: The `mainloop()` from this package blocks Deno event loop, preventing staging belt
+     * from receiving the mapped buffers; you have to use `pollEvents()` instead.
      */
     recall(): void {
+        // TODO: track buffers that are still in mapping state
+        // log warning when the number of buffers in mapping state is greater than some threshold
+        // tell user that something is blocking async
+        // you wouldn't believe I spent an hour tracing memory leak, only to find out `jsr:@gfx/dwm` was preventing
+        // async
+
         this.#mapped.forEach((buffer) => {
             buffer.mapAsync(GPUMapMode.WRITE).then(() => this.#free.push(buffer));
         });
@@ -276,6 +285,7 @@ export interface StagingBeltOptions {
     readonly chunkSize: number;
     readonly usage?: number;
     readonly alignment?: number;
+    readonly cap?: number;
 }
 
 interface PendingBuffer {

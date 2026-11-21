@@ -19,6 +19,8 @@ export class ResourcePool<R, P> implements Disposable {
     #deriveKey: (props: P) => unknown;
     #pool = new Map<unknown, ResourceInfo<R>[]>();
     #destroyed = false;
+    #borrowing: Set<Error> | null;
+    #debug: string | null;
 
     readonly retention: number;
 
@@ -27,6 +29,8 @@ export class ResourcePool<R, P> implements Disposable {
         this.#factory = factory;
         this.#destroy = destroy;
         this.#deriveKey = deriveKey;
+        this.#borrowing = options.validate ? new Set() : null;
+        this.#debug = options.debug ?? null;
         this.retention = retention;
     }
 
@@ -39,7 +43,11 @@ export class ResourcePool<R, P> implements Disposable {
      * This method is usually called before the start of new frame, or to be more precise, before the pool is used in
      * new frame.
      */
-    cycle(): void {
+    beginCycle(): void {
+        if (this.#debug != null) {
+            console.log(`%c${this.#debug} %cBegin cycle`, "color:rebeccapurple", "");
+        }
+
         for (const [key, subpool] of this.#pool.entries()) {
             this.#pool.set(
                 key,
@@ -57,6 +65,23 @@ export class ResourcePool<R, P> implements Disposable {
     }
 
     /**
+     * End the cycle
+     *
+     * Currently this method acts as validator to ensure that no resources are being leaked.
+     */
+    endCycle(): void {
+        if (this.#borrowing != null && this.#borrowing.size != 0) {
+            const error = new AggregateError(this.#borrowing, `${this.#borrowing.size} resources are being leaked`);
+            if (this.#debug != null) console.error(`%c${this.#debug}%c`, "color:rebeccapurple", "", error);
+            throw error;
+        }
+
+        if (this.#debug != null) {
+            console.log(`%c${this.#debug} %cEnd cycle`, "color:rebeccapurple", "");
+        }
+    }
+
+    /**
      * Borrow resource from this pool
      *
      * If the pool have no resources matching the provided properties, a new resource will be allocated and tracked by
@@ -67,19 +92,24 @@ export class ResourcePool<R, P> implements Disposable {
      * it will be leaked.
      *
      * @param props Resource properties
+     * @param outOfCycle Allow borrowed resource to be used outside current cycle
      * @returns Borrowed resource handle
      */
-    borrow(props: P): Borrowed<R> {
+    borrow(props: P, outOfCycle: boolean = false): Borrowed<R> {
         if (this.#destroyed) throw new Error("Pool is destroyed");
 
         const resource = this.#borrow(props);
+        const error = outOfCycle ? null : new Error("Resource is leaked");
         let borrowed = true;
 
         const release = () => {
             if (!borrowed) return;
             borrowed = false;
             this.#release(props, resource);
+            if (error != null) this.#borrowing?.delete(error);
         };
+
+        if (error != null) this.#borrowing?.add(error);
 
         return {
             get resource() {
@@ -161,7 +191,7 @@ export interface ResourcePoolOptions<R, P> {
      * The number of pool cycles to retain the resource while unused before it gets removed from the pool
      *
      * Each allocated resource in the pool is assigned a counter that initially set to a value provided from this
-     * option. Every time {@link ResourcePool.cycle} is called, the counters will be decreased. Once the counter reaches
+     * option. Every time {@link ResourcePool.beginCycle} is called, the counters will be decreased. Once the counter reaches
      * 0, on the next cycle, the resources will be destroyed. If the resource is borrowed, the counter will reset to
      * this retention value.
      *
@@ -169,6 +199,19 @@ export interface ResourcePoolOptions<R, P> {
      * the resource, so it gets destroyed on next cycle).
      */
     readonly retention?: number;
+
+    /**
+     * Whether to enable resource borrow validation
+     *
+     * At the end of cycle, if the resource is still being borrowed, the resource pool will throw an exception with the
+     * stacktrace to all borrowing resources. This is particually useful for tracing where the resource is being leaked.
+     */
+    readonly validate?: boolean;
+
+    /**
+     * Whether to print debugging information to `console` with a specific label
+     */
+    readonly debug?: string | null;
 
     /**
      * Derive key for `Map` based on given resource properties

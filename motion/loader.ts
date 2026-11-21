@@ -1,1015 +1,851 @@
+import type * as annotation from "./annotation.ts";
 import type * as context from "./context.ts";
-import type * as model from "./model.ts";
+import { array, asset, boolean, number, string } from "./core.ts";
+import { dbg, dbgName } from "./debug.ts";
+import * as model from "./model.ts";
 import * as runtime from "./runtime.ts";
 
-export function loadType(
-    options: Readonly<{
-        source: model.Type;
-        elementTable: (ordinal: number) => runtime.Element;
-    }>,
-): runtime.Type {
-    const { source, elementTable } = options;
+export interface LoadModuleOptions {
+    /**
+     * Module source parsed as AST
+     */
+    readonly source: model.Module;
 
-    switch (source.kind) {
-        case "parameterized": {
-            const { parameterOrdinal } = source;
-            return { kind: "parameterized", parameterOrdinal };
-        }
+    /**
+     * Resolve for element from given module identifier and export name
+     *
+     * @param module Module identifier
+     * @param name Exported element name
+     * @returns Resolved element
+     */
+    readonly resolve: (module: string, name: string) => PromiseLike<runtime.Element> | runtime.Element;
 
-        case "fresh": {
-            const { declOrdinal, typeParams } = source;
-            const element = elementTable(declOrdinal);
-
-            if (element == null) {
-                console.log(source);
-                throw new Error(`(TODO: no element at ordinal ${declOrdinal})`);
-            }
-
-            if (!(element instanceof runtime.TypeDecl)) {
-                throw new Error("(TODO: element is not a type)");
-            }
-
-            return {
-                kind: "fresh",
-                decl: element,
-                typeParams: typeParams.map((source) => loadType({ source, elementTable })),
-            };
-        }
-    }
+    /**
+     * Resolve for asset inside current module from given name (or path)
+     *
+     * @param name Asset name
+     * @returns Resolved asset
+     */
+    readonly asset: (name: string) => PromiseLike<Blob> | Blob;
 }
 
-/**
- * Map type to new domain
- *
- * @param from Type from source (e.g. field type)
- * @param domain Target type parameter domain
- * @returns Mapped type under given new domain
- */
-export function mapType(from: runtime.Type, domain: readonly runtime.Type[]): runtime.Type {
-    switch (from.kind) {
-        case "parameterized": {
-            return domain[from.parameterOrdinal];
-        }
-
-        case "fresh": {
-            const { decl, typeParams } = from;
-            return { kind: "fresh", decl, typeParams: typeParams.map((x) => mapType(x, domain)) };
-        }
-    }
+export interface LoadedModule {
+    readonly elementTable: readonly runtime.Element[];
+    readonly exports: Readonly<Record<string, runtime.Element>>;
 }
 
-export function qualifyType(
-    type: runtime.Type,
-    inputTypeParams: readonly runtime.QualifiedType[],
-): runtime.QualifiedType {
-    switch (type.kind) {
-        case "fresh": {
-            const { decl, typeParams } = type;
+export async function loadModule(options: LoadModuleOptions): Promise<LoadedModule> {
+    const { source, resolve, asset } = options;
+    const linkable: Linkable[] = [];
 
-            if (decl.info.typeParams.length != typeParams.length) {
-                throw new Error("(TODO: type parameter count mismatch)");
+    const elementTable = await Promise.all(source.elementTable.map(async (e) => {
+        switch (e.kind) {
+            case model.ElementKind.ImportElement: {
+                const { module, name } = e;
+                return await resolve(module, name);
             }
 
-            return { decl, typeParams: typeParams.map((type) => qualifyType(type, inputTypeParams)) };
+            case model.ElementKind.ImportAsset: {
+                const { name } = e;
+                return new Asset(await asset(name));
+            }
+
+            case model.ElementKind.Component: {
+                const component = new Component(e);
+                linkable.push(component);
+                return component;
+            }
+
+            default: {
+                throw new Error(`Illegal element type ID: ${(e as model.Element)?.kind ?? "<???>"}`);
+            }
         }
+    }));
 
-        case "parameterized": {
-            return inputTypeParams[type.parameterOrdinal];
-        }
-    }
-}
-
-/**
- * Load a module from its AST representation
- *
- * @param options Load options
- * @returns Loaded module
- */
-export function loadModule(
-    options: Readonly<{
-        source: model.Module;
-        resolve: (module: string, name: string) => runtime.Element;
-    }>,
-): LoadedModule {
-    const { source, resolve } = options;
-    const elementTableArray: runtime.Element[] = source.elementTable.map((source) => loadElement({ source, resolve }));
-    const elementTable = (ordinal: number) => elementTableArray[ordinal];
-
-    function isLoaderImpl(e: runtime.Element): e is Struct | Variant | Function | Component {
-        return e instanceof Struct || e instanceof Variant || e instanceof Function || e instanceof Component;
-    }
-
-    elementTableArray.forEach((e) => isLoaderImpl(e) && !e.linked ? e.prelink(elementTable) : void 0);
-    elementTableArray.forEach((e) => isLoaderImpl(e) && !e.linked ? e.link(elementTable) : void 0);
-    elementTableArray.forEach((e) => isLoaderImpl(e) ? e.linked = true : void 0);
+    linkable.forEach((e) => {
+        e[Linkable](elementTable);
+    });
 
     return {
-        elementTable: elementTableArray,
+        elementTable,
         exports: Object.fromEntries(
-            Object.entries(source.exports).map(([name, ordinal]) => {
-                if (ordinal >= elementTableArray.length) throw new Error("(TODO: element ordinal out of bounds)");
-                return [name, elementTableArray[ordinal]] as const;
+            Object.entries(source.exports).map(([key, ordinal]) => {
+                if (ordinal < 0 || ordinal >= elementTable.length) {
+                    throw new Error(`Element index ${ordinal} is out of bounds: [0; ${elementTable.length})`);
+                }
+
+                return [key, elementTable[ordinal]] as const;
             }),
         ),
     };
 }
 
-export function createResolver(
-    matrix: Readonly<Record<string, Readonly<Record<string, runtime.Element>>>>,
-): (module: string, name: string) => runtime.Element {
-    return (module, name) => {
-        if (!(module in matrix)) throw new Error(`Module not found: "${module}"`);
-        if (!(name in matrix[module])) throw new Error(`No element exported with name ${name} in module "${module}"`);
-        return matrix[module][name];
-    };
+interface Linkable {
+    [Linkable](elementTable: readonly runtime.Element[]): void;
 }
 
-export interface LoadedModule {
-    /**
-     * Element table
-     *
-     * This table contains all the elements that has been imported and created inside the module. Tooling (e.g. the
-     * editor) would access the element table directly, while resolver would only touch the exported elements.
-     */
-    readonly elementTable: readonly runtime.Element[];
+const Linkable = Symbol("Linkable");
 
-    /**
-     * Exported elements
-     *
-     * Access to elements exported from the loaded module.
-     */
-    readonly exports: Readonly<Record<string, runtime.Element>>;
-}
+class Asset extends runtime.Asset {
+    override annotations: readonly annotation.Annotation[] = [];
 
-export function loadElement(
-    options: Readonly<{
-        source: model.Element;
-        resolve: (module: string, name: string) => runtime.Element;
-    }>,
-): runtime.Element {
-    const { source, resolve } = options;
-
-    switch (source.kind) {
-        case "import": {
-            const { module, name } = source;
-            return resolve(module, name);
-        }
-
-        case "struct": {
-            return new Struct(source);
-        }
-
-        case "variant": {
-            return new Variant(source);
-        }
-
-        case "function": {
-            return new Function(source);
-        }
-
-        case "component": {
-            return new Component(source);
-        }
-    }
-
-    throw new Error("(TODO: unexpected element type / try updating maybe?)");
-}
-
-/**
- * Marker indicating the element is not linked
- *
- * This marker is used on embedder-side functions like {@link runtime.FunctionInfo.apply} or
- * {@link runtime.MethodInfo.apply}.
- */
-// deno-lint-ignore no-explicit-any
-export function notLinked(): any {
-    throw new Error("Not linked");
-}
-
-abstract class TypeDecl extends runtime.TypeDecl {
-    prelinkMethods(
-        source: Readonly<Record<string, model.Method>>,
-        elementTable: (ordinal: number) => runtime.Element,
-    ): Record<string, runtime.MethodInfo & { apply: runtime.MethodInfo["apply"] }> {
-        return Object.fromEntries(
-            Object.entries(source).map(([name, { annotations, typeParams, inputs, returnType }]) =>
-                [
-                    name,
-                    {
-                        annotations,
-                        typeParams: typeParams.map(({ annotations }) => ({ annotations })),
-                        inputs: inputs.map((input) => Function.loadInput(input, elementTable)),
-                        returnType: loadType({ source: returnType, elementTable }),
-                        apply: notLinked,
-                    } as runtime.MethodInfo,
-                ] as const
-            ),
-        );
-    }
-
-    linkMethods(
-        source: Readonly<Record<string, model.Method>>,
-        methods: Readonly<Record<string, runtime.MethodInfo & { apply: runtime.MethodInfo["apply"] }>>,
-        elementTable: (ordinal: number) => runtime.Element,
-    ): void {
-        for (const methodName in source) {
-            const methodInfo = methods[methodName];
-            const expression = loadExpression({
-                source: source[methodName].expression,
-                expected: methodInfo.returnType,
-                typeParams: [
-                    ...this.info.typeParams.map(() => TypeParameterKind.Type),
-                    ...methodInfo.typeParams.map(() => TypeParameterKind.Method),
-                ],
-                variables: [
-                    {
-                        type: {
-                            kind: "fresh",
-                            decl: this,
-                            typeParams: this.info.typeParams.map((_, i) => ({
-                                kind: "parameterized",
-                                parameterOrdinal: i,
-                            })),
-                        },
-                        mode: "let",
-                        init: true,
-                    },
-                    ...methodInfo.inputs.map(({ type }) => ({
-                        type: type,
-                        mode: "let",
-                        init: true,
-                    } satisfies VariableInfo)),
-                ],
-                elementTable,
-            });
-
-            methodInfo.apply = (typeParams, self, ...inputs) => (expression(typeParams, {
-                get: (ordinal) => {
-                    if (ordinal == 0) return self;
-                    if (ordinal > 0 && ordinal <= methodInfo.inputs.length) return inputs[ordinal - 1];
-                    throw new Error(`Variable ordinal ${ordinal} does not exists on method-level scope`);
-                },
-                set: (ordinal) => {
-                    if (ordinal >= 0 && ordinal <= methodInfo.inputs.length) {
-                        throw new Error(`Variable can only be assigned once`);
-                    }
-                    throw new Error(`Variable ordinal ${ordinal} does not exists on method-level scope`);
-                },
-            }));
-        }
-    }
-}
-
-class Struct extends TypeDecl {
-    #info: runtime.StructTypeDeclInfo | null = null;
-    #source: model.Struct;
-    linked = false;
-
-    constructor(source: model.Struct) {
+    constructor(public readonly data: Blob) {
         super();
-        this.#source = source;
-    }
-
-    override get info(): runtime.StructTypeDeclInfo {
-        if (this.#info == null) throw new Error("Not linked");
-        return this.#info;
-    }
-
-    prelink(elementTable: (ordinal: number) => runtime.Element): void {
-        const { annotations, typeParams, fields, methods } = this.#source;
-
-        const loadedFields = Object.entries(fields).map(([name, { annotations, type }]) =>
-            [name, {
-                annotations,
-                type: loadType({ source: type, elementTable }),
-                get: (_, self) => (self as Record<string, unknown>)[name],
-            } as runtime.StructFieldInfo] as const
-        );
-
-        this.#info = {
-            annotations,
-            typeParams: typeParams.map(({ annotations }) => ({ annotations })),
-            family: "struct",
-            fields: Object.fromEntries(loadedFields),
-            methods: this.prelinkMethods(methods, elementTable),
-
-            default: (typeParams) => (Object.fromEntries(
-                loadedFields.map(([name, { type }]) => {
-                    const qualified = qualifyType(type, typeParams);
-                    const value = qualified.decl.info.default(qualified.typeParams);
-                    return [name, value] as const;
-                }),
-            )),
-
-            create: (typeParams, fields) => (Object.fromEntries(loadedFields.map(([name, { type }]) => {
-                if (name in fields) return [name, fields[name]] as const;
-                const qualified = qualifyType(type, typeParams);
-                const value = qualified.decl.info.default(qualified.typeParams);
-                return [name, value] as const;
-            }))),
-        };
-    }
-
-    link(elementTable: (ordinal: number) => runtime.Element): void {
-        if (this.#info == null) throw new Error("Not pre-linked");
-        this.linkMethods(this.#source.methods, this.#info.methods, elementTable);
     }
 }
 
-class Variant extends TypeDecl {
-    #info: runtime.VariantTypeDeclInfo | null = null;
-    #source: model.Variant;
-    linked = false;
-
-    constructor(source: model.Variant) {
-        super();
-        this.#source = source;
-    }
-
-    override get info(): runtime.VariantTypeDeclInfo {
-        if (this.#info == null) throw new Error("Not linked");
-        return this.#info;
-    }
-
-    prelink(elementTable: (ordinal: number) => runtime.Element): void {
-        const { annotations, typeParams, options, default: initial, methods } = this.#source;
-
-        interface Variant {
-            option: string;
-            data: unknown;
-        }
-
-        const loadedOptions = Object.fromEntries(
-            Object.entries(options).map(([name, { annotations, type }]) =>
-                [name, {
-                    annotations,
-                    type: type != null ? loadType({ source: type, elementTable }) : null,
-                    create: (_, data) => ({ option: name, data: type != null ? data : null } satisfies Variant),
-                    match: (_, self) => {
-                        const { option, data } = self as Variant;
-                        if (option == name) return { matched: true, data };
-                        return { matched: false };
-                    },
-                } as runtime.VariantOptionInfo] as const
-            ),
-        );
-
-        if (Object.keys(loadedOptions).length == 0) {
-            throw new Error("(TODO: variant X have no defined options)");
-        }
-
-        if (!(initial in loadedOptions)) {
-            throw new Error("(TODO: default option X does not exists in Y)");
-        }
-
-        const defaultOption = loadedOptions[initial];
-
-        this.#info = {
-            annotations,
-            typeParams: typeParams.map(({ annotations }) => ({ annotations })),
-            family: "variant",
-            options: loadedOptions,
-            methods: this.prelinkMethods(methods, elementTable),
-
-            default: (typeParams) => {
-                if (defaultOption.type != null) {
-                    const qualified = qualifyType(defaultOption.type, typeParams);
-                    const data = qualified.decl.info.default(qualified.typeParams);
-                    return { option: initial, data } satisfies Variant;
-                } else {
-                    return { option: initial, data: null } satisfies Variant;
-                }
-            },
-        };
-    }
-
-    link(elementTable: (ordinal: number) => runtime.Element): void {
-        if (this.#info == null) throw new Error("Not pre-linked");
-        this.linkMethods(this.#source.methods, this.#info.methods, elementTable);
-    }
-}
-
-class Function extends runtime.Function {
-    #info: (runtime.FunctionInfo & { apply: runtime.FunctionInfo["apply"] }) | null = null;
-    #source: model.Function;
-    linked = false;
-
-    constructor(source: model.Function) {
-        super();
-        this.#source = source;
-    }
-
-    override get info(): runtime.FunctionInfo {
-        if (this.#info == null) throw new Error("Not linked");
-        return this.#info;
-    }
-
-    prelink(elementTable: (ordinal: number) => runtime.Element): void {
-        const { annotations, typeParams, inputs, returnType } = this.#source;
-
-        this.#info = {
-            annotations,
-            typeParams: typeParams.map(({ annotations }) => ({ annotations })),
-            inputs: inputs.map((input) => Function.loadInput(input, elementTable)),
-            returnType: loadType({ source: returnType, elementTable }),
-            apply: notLinked,
-        };
-    }
-
-    link(elementTable: (ordinal: number) => runtime.Element): void {
-        if (this.#info == null) throw new Error("Not pre-linked");
-
-        const info = this.#info;
-        const expression = loadExpression({
-            source: this.#source.expression,
-            expected: info.returnType,
-            typeParams: info.typeParams.map(() => TypeParameterKind.Function),
-            variables: info.inputs.map(({ type }) => ({ type, mode: "let", init: true })),
-            elementTable,
-        });
-
-        this.#info.apply = (typeParams, ...inputs) => (expression(typeParams, {
-            get: (ordinal) => {
-                if (ordinal >= 0 && ordinal < info.inputs.length) return inputs[ordinal];
-                throw new Error(`Variable ordinal ${ordinal} does not exists on function-level scope`);
-            },
-            set: (ordinal) => {
-                if (ordinal >= 0 && ordinal < info.inputs.length) throw new Error(`Variable can only be assigned once`);
-                throw new Error(`Variable ordinal ${ordinal} does not exists on function-level scope`);
-            },
-        }));
-    }
-
-    static loadInput(
-        source: model.FunctionInput,
-        elementTable: (ordinal: number) => runtime.Element,
-    ): runtime.FunctionInputInfo {
-        const { annotations, type } = source;
-        return { annotations, type: loadType({ source: type, elementTable }) };
-    }
-}
-
-class Component extends runtime.Component {
-    #info: (runtime.ComponentInfo & { eval: runtime.ComponentInfo["eval"] }) | null = null;
+class Component extends runtime.Component implements Linkable {
     #source: model.Component;
-    linked = false;
+    #parameters: Record<string, runtime.Parameter & { fallback: Expression }> | null = null;
+    #content: readonly ((options: RenderOptions) => Promise<void>)[] | null = null;
+    #slots: Record<string, runtime.Slot> | null = null;
+
+    override annotations: readonly annotation.Annotation[];
+    override typeParams: readonly runtime.TypeParameter[];
 
     constructor(source: model.Component) {
         super();
         this.#source = source;
+        this.annotations = source.annotations;
+        this.typeParams = source.typeParams.map(({ annotations }) => new runtime.TypeParameter(annotations));
     }
 
-    override get info(): runtime.ComponentInfo {
-        if (this.#info == null) throw new Error("Not linked");
-        return this.#info;
+    override get parameters(): Readonly<Record<string, runtime.Parameter>> {
+        if (this.#parameters == null) throw new Error("Not linked");
+        return this.#parameters;
     }
 
-    prelink(elementTable: (ordinal: number) => runtime.Element): void {
-        const { annotations, typeParams, parameters, slots } = this.#source;
-
-        this.#info = {
-            annotations,
-            typeParams: typeParams.map(({ annotations }) => ({ annotations })),
-            parameters: Object.fromEntries(
-                Object.entries(parameters).map(([name, { annotations, inputs, returnType }]) => ([name, {
-                    annotations,
-                    inputs: inputs.map(({ annotations, type }) => ({
-                        annotations,
-                        type: loadType({ source: type, elementTable }),
-                    })),
-                    returnType: loadType({ source: returnType, elementTable }),
-                } as runtime.ParameterInfo] as const)),
-            ),
-            slots: Object.fromEntries(
-                Object.entries(slots).map(([name, { annotations, inputs }]) => ([name, {
-                    annotations,
-                    inputs: inputs.map(({ annotations, type }) => ({
-                        annotations,
-                        type: loadType({ source: type, elementTable }),
-                    })),
-                } as runtime.SlotInfo] as const)),
-            ),
-            eval: notLinked,
-        };
+    override get slots(): Readonly<Record<string, runtime.Slot>> {
+        if (this.#slots == null) throw new Error("Not linked");
+        return this.#slots;
     }
 
-    link(elementTable: (ordinal: number) => runtime.Element): void {
-        if (this.#info == null) throw new Error("Not pre-linked");
+    [Linkable](elementTable: readonly runtime.Element[]): void {
+        this.#parameters = Object.fromEntries(
+            Object.entries(this.#source.parameters).map(([name, { annotations, inputs, output, fallback }]) => {
+                const paramInputs = inputs.map((source) => (loadInput({
+                    source,
+                    elementTable,
+                    typeParams: this.typeParams,
+                })));
 
-        const componentInfo = this.#info;
-
-        const loadedParameters = Object.entries(this.#source.parameters).map(([name, { fallback }]) => {
-            const paramInfo = componentInfo.parameters[name];
-            const expression = loadExpression({
-                source: fallback,
-                expected: paramInfo.returnType,
-                typeParams: componentInfo.typeParams.map(() => TypeParameterKind.Component),
-                variables: paramInfo.inputs.map(({ type }) => ({ type, mode: "let", init: true })),
-                elementTable,
-            });
-            return [name, { fallback: expression }] as const;
-        });
-
-        const content = this.#loadFragment(
-            this.#source.content,
-            [],
-            elementTable,
-        );
-
-        this.#info.eval = async ({
-            context,
-            typeParams = [],
-            parameters = {},
-            slots = {},
-        }) => {
-            await content(
-                typeParams,
-                context,
-                Object.fromEntries(loadedParameters.map(([name, { fallback }]) =>
-                    [name, (inputs) => {
-                        if (name in parameters) parameters[name](...inputs);
-                        return fallback(typeParams, {
-                            get: (ordinal) => inputs[ordinal],
-                            set: () => {},
-                        });
-                    }] as const
-                )),
-                Object.fromEntries(
-                    Object.entries(componentInfo.slots).map(([name]) => [name, slots[name] ?? (() => {})] as const),
-                ),
-                () => {},
-            );
-        };
-    }
-
-    #loadFragment(
-        source: model.Fragment,
-        variables: readonly runtime.Type[],
-        elementTable: (ordinal: number) => runtime.Element,
-    ): (
-        typeParams: readonly runtime.QualifiedType[],
-        context: context.ContextMap,
-        parameters: Readonly<Record<string, (inputs: unknown[]) => unknown>>,
-        slots: Readonly<Record<string, (context: context.ContextMap, inputs: unknown[]) => Promise<void> | void>>,
-        variable: (ordinal: number) => unknown,
-    ) => Promise<void> {
-        const fragment = source.map((object) => this.#loadObject(object, variables, elementTable));
-
-        return async (...inputs) => {
-            for (const object of fragment) {
-                await object(...inputs);
-            }
-        };
-    }
-
-    #loadObject(
-        source: model.Object,
-        variables: readonly runtime.Type[],
-        elementTable: (ordinal: number) => runtime.Element,
-    ): (
-        typeParams: readonly runtime.QualifiedType[],
-        context: context.ContextMap,
-        parameters: Readonly<Record<string, (inputs: unknown[]) => unknown>>,
-        slots: Readonly<Record<string, (context: context.ContextMap, inputs: unknown[]) => Promise<void> | void>>,
-        variable: (ordinal: number) => unknown,
-    ) => Promise<void> {
-        if (this.#info == null) throw new Error("Not pre-linked");
-
-        const componentInfo = this.#info;
-        const typeParams = this.#info.typeParams.map(() => TypeParameterKind.Component);
-        const exprVars = variables.map((type) => ({ type, mode: "let", init: true } as VariableInfo));
-
-        switch (source.kind) {
-            case "component": {
-                const { parameters, slots } = source;
-                const component = elementTable(source.componentOrdinal);
-
-                if (!(component instanceof runtime.Component)) {
-                    throw new Error("(TODO: X is not a component)");
-                }
-
-                const childTypeParams = source.typeParams.map((source) => loadType({ source, elementTable }));
-                const childInfo = component.info;
-
-                const loadedParameters = Object.entries(parameters).map(([name, source]) => {
-                    const paramInfo = childInfo.parameters[name];
-                    const expression = loadExpression({
-                        source,
-                        expected: paramInfo.returnType,
-                        typeParams,
-                        variables: [
-                            ...paramInfo.inputs.map(({ type }) => ({ type, mode: "let", init: true } as const)),
-                            ...exprVars,
-                        ],
-                        elementTable,
-                    });
-                    return [name, expression] as const;
+                const outputType = loadType({
+                    source: output,
+                    elementTable,
+                    typeParams: this.typeParams,
                 });
 
-                const loadedSlots = Object.entries(slots).map(([name, source]) => {
-                    const slotInfo = childInfo.slots[name];
-                    const fragment = this.#loadFragment(
+                return [name, {
+                    annotations,
+                    inputs: paramInputs,
+                    outputType,
+                    fallback: loadExpression({
+                        source: fallback,
+                        expect: outputType,
+                        elementTable: elementTable,
+                        typeParams: this.typeParams,
+                        variables: paramInputs.map(({ inputType }) => ({
+                            dataType: inputType,
+                            origin: VariableOrigin.ParameterInput,
+                            writable: true,
+                            initialized: true,
+                        })),
+                        parameters: {},
+                    }),
+                }];
+            }),
+        );
+
+        this.#slots = Object.fromEntries(
+            Object.entries(this.#source.slots).map(([name, { annotations, inputs }]) => [name, {
+                annotations,
+                inputs: inputs.map((source) => (loadInput({
+                    source,
+                    elementTable,
+                    typeParams: this.typeParams,
+                }))),
+            }]),
+        );
+
+        this.#content = this.#source.content.map((source) => (Component.loadChild({
+            source,
+            elementTable,
+            typeParams: this.typeParams,
+            variables: [],
+            parameters: Object.fromEntries(
+                Object.entries(this.#parameters!).map(([name, { inputs, outputType }]) => [name, {
+                    inputs,
+                    output: outputType,
+                }]),
+            ),
+            slots: Object.fromEntries(
+                Object.entries(this.#slots!).map(([name, { inputs }]) => [name, {
+                    inputs,
+                }]),
+            ),
+        })));
+    }
+
+    override async render(
+        typeParams: runtime.RuntimeType[],
+        context: context.ContextMap,
+        // deno-lint-ignore no-explicit-any
+        parameters: Readonly<Partial<Record<string, (...inputs: any[]) => any>>>,
+        slots: Readonly<
+            // deno-lint-ignore no-explicit-any
+            Partial<Record<string, (context: context.ContextMap, ...inputs: any[]) => PromiseLike<void> | void>>
+        >,
+    ): Promise<void> {
+        if (this.#parameters == null) throw new Error("Not linked");
+        if (this.#slots == null) throw new Error("Not linked");
+        if (this.#content == null) throw new Error("Not linked");
+
+        for (const child of this.#content) {
+            await child({
+                typeParams,
+                context,
+                invokeParameter: (parameter, inputs) => {
+                    const fn = parameters[parameter];
+                    if (fn != null) return fn(...inputs);
+                    return this.#parameters![parameter].fallback({
+                        typeParams,
+                        invokeParameter: () => null,
+                        getVar: (o) => inputs[o],
+                        setVar: () => {},
+                    });
+                },
+                renderSlot: async (slot, context, inputs) => {
+                    const fn = slots[slot];
+                    if (fn != null) await fn(context, ...inputs);
+                },
+                getVar: () => null,
+                setVar: () => {},
+            });
+        }
+    }
+
+    static loadChild(options: {
+        readonly source: model.ComponentChild;
+        readonly elementTable: readonly runtime.Element[];
+        readonly typeParams: readonly runtime.TypeParameter[];
+        readonly variables: readonly VariableOptions[];
+        readonly parameters: Readonly<Record<string, ParameterOptions>>;
+        readonly slots: Readonly<Record<string, SlotOptions>>;
+    }): (options: RenderOptions) => Promise<void> {
+        const { source, elementTable, typeParams: typeParamsDecl, variables, slots } = options;
+
+        switch (source.type) {
+            case model.ComponentChildType.Object: {
+                const { componentOrdinal: ordinal } = source;
+
+                if (ordinal < 0 || ordinal >= elementTable.length) {
+                    throw new Error(`Element ordinal ${ordinal} is out of bounds: [0; ${elementTable.length})`);
+                }
+
+                const component = elementTable[ordinal];
+
+                if (!(component instanceof runtime.Component)) {
+                    throw new Error(dbg`Expecting element ${ordinal} to be component, found ${component}`);
+                }
+
+                const targetTypes = source.typeParams.map((source) => {
+                    const type = loadType({ source, elementTable, typeParams: typeParamsDecl });
+                    const factory = typeToRuntimeFactory(type, typeParamsDecl);
+                    return { type, factory };
+                });
+
+                const parameters = Object.entries(source.parameters).map(([name, source]) => {
+                    if (!(name in component.parameters)) throw new Error(dbg`No parameter ${name} in ${component}`);
+                    const paramInfo = component.parameters[name];
+                    const expr = loadExpression({
                         source,
-                        [
-                            ...slotInfo.inputs.map(({ type }) => type),
+                        expect: translateDomain(
+                            component.typeParams,
+                            paramInfo.outputType,
+                            targetTypes.map(({ type }) => type),
+                            (decl, typeParams) => new runtime.ConcreteType(decl, typeParams),
+                        ),
+                        elementTable,
+                        typeParams: typeParamsDecl,
+                        parameters: options.parameters,
+                        variables: [
+                            ...paramInfo.inputs.map(({ inputType }) => ({
+                                dataType: inputType,
+                                origin: VariableOrigin.ParameterInput,
+                                initialized: true,
+                                writable: false,
+                            })),
                             ...variables,
                         ],
-                        elementTable,
-                    );
+                    });
+                    return [name, { expr }] as const;
+                });
+
+                const slots = Object.entries(source.slots).map(([name, content]) => {
+                    if (!(name in component.slots)) throw new Error(dbg`No slot ${name} in ${component}`);
+                    const slotInfo = component.slots[name];
+                    const fragment = content.map((source) => (Component.loadChild({
+                        ...options,
+                        source,
+                        variables: [
+                            ...slotInfo.inputs.map(({ inputType }) => ({
+                                dataType: inputType,
+                                origin: VariableOrigin.ParameterInput,
+                                initialized: true,
+                                writable: false,
+                            })),
+                            ...variables,
+                        ],
+                    })));
                     return [name, fragment] as const;
                 });
 
-                return async (typeParams, context, parameters, slots, variable) => {
-                    await component.info.eval({
+                return async (options) => {
+                    const { context, typeParams, invokeParameter, getVar, setVar } = options;
+                    await component.render(
+                        targetTypes.map(({ factory }) => factory(typeParams)),
                         context,
-                        typeParams: childTypeParams.map((type) => qualifyType(type, typeParams)),
-                        parameters: Object.fromEntries(
-                            loadedParameters.map(([name, expr]) => [name, (...inputs) => (expr(typeParams, {
-                                get: (ordinal) => {
-                                    const paramInputs = childInfo.parameters[name].inputs.length;
-                                    if (ordinal < paramInputs) return inputs[ordinal];
-                                    return variable(ordinal - paramInputs);
-                                },
-                                set: () => {},
-                            }))]),
-                        ),
-                        slots: Object.fromEntries(
-                            loadedSlots.map(([name, slot]) => [name, (context, ...inputs) => (slot(
-                                typeParams,
-                                context,
-                                parameters,
-                                slots,
-                                (ordinal) => {
-                                    const paramInputs = childInfo.parameters[name].inputs.length;
-                                    if (ordinal < paramInputs) return inputs[ordinal];
-                                    return variable(ordinal - paramInputs);
-                                },
-                            ))]),
-                        ),
-                    });
+                        Object.fromEntries(parameters.map(([name, { expr }]) => {
+                            // deno-lint-ignore no-explicit-any
+                            const fn = (...inputs: any[]) =>
+                                expr({
+                                    typeParams,
+                                    invokeParameter,
+                                    getVar: (o) => {
+                                        if (o < inputs.length) return inputs[o];
+                                        return getVar(o - inputs.length);
+                                    },
+                                    setVar: (o, v) => {
+                                        if (o < inputs.length) return;
+                                        setVar(o - inputs.length, v);
+                                    },
+                                });
+                            return [name, fn];
+                        })),
+                        Object.fromEntries(slots.map(([name, fragment]) => {
+                            // deno-lint-ignore no-explicit-any
+                            return [name, async (context: context.ContextMap, inputs: any[]) => {
+                                for (const child of fragment) {
+                                    await child({
+                                        ...options,
+                                        context,
+                                        getVar: (o) => {
+                                            if (o < inputs.length) return inputs[o];
+                                            return getVar(o - inputs.length);
+                                        },
+                                        setVar: (o, v) => {
+                                            if (o < inputs.length) return;
+                                            setVar(o - inputs.length, v);
+                                        },
+                                    });
+                                }
+                            }];
+                        })),
+                    );
                 };
             }
 
-            case "slot": {
-                const { name, inputs } = source;
+            case model.ComponentChildType.UseSlot: {
+                const { slot } = source;
+                if (!(slot in slots)) throw new Error(dbg`No slot ${slot} in current scope`);
 
-                if (!(name in componentInfo.slots)) {
-                    throw new Error("(TODO: no slot X defined in component)");
-                }
+                const inputs = source.inputs.map((source, i) => (loadExpression({
+                    source,
+                    expect: slots[slot].inputs[i],
+                    elementTable,
+                    typeParams: typeParamsDecl,
+                    parameters: options.parameters,
+                    variables,
+                })));
 
-                const slotInfo = componentInfo.slots[name];
-
-                if (slotInfo.inputs.length != inputs.length) {
-                    throw new Error("(TODO: number of inputs mismatched)");
-                }
-
-                const loadedInputs = inputs.map((expression, i) =>
-                    loadExpression({
-                        source: expression,
-                        expected: slotInfo.inputs[i].type,
-                        typeParams,
-                        variables: exprVars,
-                        elementTable,
-                    })
-                );
-
-                return async (typeParams, context, _parameters, slots, variable) => {
-                    await slots[name](
+                return async ({ context, renderSlot, typeParams, invokeParameter, getVar, setVar }) => {
+                    await renderSlot(
+                        slot,
                         context,
-                        loadedInputs.map((expr) => expr(typeParams, { get: variable, set: () => {} })),
+                        inputs.map((fn) => (fn({
+                            typeParams,
+                            invokeParameter,
+                            getVar,
+                            setVar,
+                        }))),
                     );
                 };
             }
         }
-
-        throw new Error("(TODO: unexpected object type / try updating maybe?)");
     }
 }
 
-export function loadExpression(
-    options: Readonly<{
-        source: model.Expression;
-        expected: runtime.Type;
-        typeParams: readonly TypeParameterKind[];
-        variables: readonly VariableInfo[];
-        elementTable: (ordinal: number) => runtime.Element;
-    }>,
-): (typeParams: readonly runtime.QualifiedType[], variables: RuntimeVariableTable) => unknown {
-    const { source, expected, typeParams, variables, elementTable } = options;
+interface RenderOptions {
+    readonly context: context.ContextMap;
+    readonly typeParams: readonly runtime.RuntimeType[];
+    // deno-lint-ignore no-explicit-any
+    invokeParameter(parameter: string, inputs: any[]): any;
+    // deno-lint-ignore no-explicit-any
+    renderSlot(slot: string, context: context.ContextMap, inputs: any[]): Promise<void>;
+    // deno-lint-ignore no-explicit-any
+    getVar(ordinal: number): any;
+    // deno-lint-ignore no-explicit-any
+    setVar(ordinal: number, value: any): void;
+}
+
+function loadType(options: {
+    readonly source: model.Type;
+    readonly elementTable: readonly runtime.Element[];
+    readonly typeParams: readonly runtime.TypeParameter[];
+}): runtime.Type {
+    const { source, elementTable, typeParams } = options;
 
     switch (source.kind) {
-        case "default": {
-            if (expected.kind == "fresh") {
-                return (typeParams) => {
-                    return expected.decl.info.default(expected.typeParams.map((type) => qualifyType(type, typeParams)));
-                };
+        case model.TypeKind.Concrete: {
+            if (source.typeOrdinal < 0 || source.typeOrdinal >= elementTable.length) {
+                throw new Error(`Element ordinal ${source.typeOrdinal} is out of bounds: [0; ${elementTable.length})`);
             }
 
-            if (expected.parameterOrdinal >= typeParams.length) {
-                throw new Error("(TODO: type parameter ordinal out of bounds)");
+            const element = elementTable[source.typeOrdinal];
+
+            if (!(element instanceof runtime.TypeDecl)) {
+                throw new Error(dbg`Expecting element ${source.typeOrdinal} to be type, found ${element}`);
             }
 
-            // `default` works with all types (including parameterized types),
-            // so no type checking here.
+            return new runtime.ConcreteType(
+                element,
+                source.parameters.map((source) => (loadType({ ...options, source }))),
+            );
+        }
 
-            return (inputTypeParams) => {
-                const { decl, typeParams } = inputTypeParams[expected.parameterOrdinal];
-                return decl.info.default(typeParams);
+        case model.TypeKind.Parameterized: {
+            if (source.paramOrdinal < 0 || source.paramOrdinal >= typeParams.length) {
+                throw new Error(`Type parameter #${source.paramOrdinal} is out of bounds: [0; ${typeParams.length}]`);
+            }
+
+            return typeParams[source.paramOrdinal];
+        }
+    }
+}
+
+function typeToRuntimeFactory(
+    type: runtime.Type,
+    typeParamsDecl: readonly runtime.TypeParameter[],
+): (typeParams: readonly runtime.RuntimeType[]) => runtime.RuntimeType {
+    if (type instanceof runtime.TypeParameter) {
+        const i = typeParamsDecl.indexOf(type);
+        if (i == -1) throw new Error("Provided type is parameterized, but it does not exists in declaration list");
+        return (typeParams) => typeParams[i];
+    }
+
+    if (type instanceof runtime.ConcreteType) {
+        const list = type.typeParams.map((x) => typeToRuntimeFactory(x, typeParamsDecl));
+        return (typeParams) => new runtime.RuntimeType(type.declaration, list.map((fn) => fn(typeParams)));
+    }
+
+    throw new Error("Illegal build-time type information");
+}
+
+function compareType(a: runtime.Type, b: runtime.Type): boolean {
+    if (a == b) return true;
+
+    if (a instanceof runtime.ConcreteType && b instanceof runtime.ConcreteType) {
+        if (a.declaration != b.declaration) return false;
+        if (a.typeParams.length != b.typeParams.length) return false;
+        return a.typeParams.every((x, i) => compareType(x, b.typeParams[i]));
+    }
+
+    return false;
+}
+
+/**
+ * Translate type domain
+ *
+ * This function translate the domain from source domain to current domain. For example: if the current domain is
+ * `<A, B, C>`, source is `Pair<X, Y>` and the domain translation is `X => A; Y => B`, the result type will become
+ * `Pair<A, B>`.
+ *
+ * ```
+ * translateDomain(
+ *     [X, Y],
+ *     new ConcreteType(Pair, [X, Y]),
+ *     [A, B],
+ *     merge
+ * ) // == new ConcreteType(Pair, [A, B])
+ * ```
+ *
+ * @param typeParams Declared source type parameters
+ * @param source Source type
+ * @param targets Target type parameters
+ * @param merge Merging function
+ * @returns Target type
+ */
+function translateDomain<T>(
+    typeParams: readonly runtime.TypeParameter[],
+    source: runtime.Type,
+    targets: readonly T[],
+    merge: (decl: runtime.TypeDecl, typeParams: readonly T[]) => T,
+): T {
+    if (source instanceof runtime.TypeParameter) {
+        const i = typeParams.indexOf(source);
+        if (i == -1) throw new Error(`Source type is not includedin provided type parameter declaration list`);
+        return targets[i];
+    }
+
+    if (source instanceof runtime.ConcreteType) {
+        const decl = source.declaration;
+        const list = source.typeParams.map((source) => translateDomain(typeParams, source, targets, merge));
+        return merge(decl, list);
+    }
+
+    throw new Error(`Illegal build-time type information`);
+}
+
+function loadInput(options: {
+    readonly source: model.Input;
+    readonly elementTable: readonly runtime.Element[];
+    readonly typeParams: readonly runtime.TypeParameter[];
+}): runtime.Input {
+    const { source: { annotations, type }, elementTable, typeParams } = options;
+    return {
+        annotations,
+        inputType: loadType({ source: type, elementTable, typeParams }),
+    };
+}
+
+export interface LoadExpressionOptions {
+    readonly source: model.Expression;
+    readonly expect: runtime.Type;
+    readonly elementTable: readonly runtime.Element[];
+    readonly typeParams: readonly runtime.TypeParameter[];
+    readonly variables: readonly VariableOptions[];
+    readonly parameters: Readonly<Record<string, ParameterOptions>>;
+}
+
+export interface VariableOptions {
+    readonly dataType: runtime.Type;
+    readonly origin: VariableOrigin;
+    readonly writable: boolean;
+    readonly initialized: boolean;
+}
+
+export interface ParameterOptions {
+    readonly inputs: readonly runtime.Type[];
+    readonly output: runtime.Type;
+}
+
+export interface SlotOptions {
+    readonly inputs: readonly runtime.Type[];
+}
+
+export enum VariableOrigin {
+    General,
+    FunctionInput,
+    Reserved0, // for method's "self" if we choose to add this feature later
+    Reserved1, // for method's input if we choose to add this feature later
+    ParameterInput,
+    SlotInput,
+    Local,
+    PatternMatch,
+}
+
+const varOriginNames: Record<VariableOrigin, string> = {
+    [VariableOrigin.General]: "general",
+    [VariableOrigin.FunctionInput]: "function input",
+    [VariableOrigin.Reserved0]: "method instance",
+    [VariableOrigin.Reserved1]: "method input",
+    [VariableOrigin.ParameterInput]: "parameter input",
+    [VariableOrigin.SlotInput]: "slot input",
+    [VariableOrigin.Local]: "local variable",
+    [VariableOrigin.PatternMatch]: "pattern matcher",
+};
+
+function dbgVariableInfo(options: VariableOptions): string {
+    let result = `${varOriginNames[options.origin]}: ${dbgName(options.dataType)}`;
+    if (options.writable) result = "mutable " + result;
+    if (!options.initialized) result = result + " (not initialized)";
+    return result;
+}
+
+export interface ExpressionOptions {
+    readonly typeParams: readonly runtime.RuntimeType[];
+    // deno-lint-ignore no-explicit-any
+    invokeParameter(parameter: string, inputs: any[]): any;
+    // deno-lint-ignore no-explicit-any
+    getVar(ordinal: number): any;
+    // deno-lint-ignore no-explicit-any
+    setVar(ordinal: number, value: any): void;
+}
+
+export interface Expression {
+    // deno-lint-ignore no-explicit-any
+    (options: ExpressionOptions): any;
+}
+
+const primitiveMap = {
+    [model.ExpressionKind.Number]: number.asType(),
+    [model.ExpressionKind.Boolean]: boolean.asType(),
+    [model.ExpressionKind.String]: string.asType(),
+};
+
+export function loadExpression(options: LoadExpressionOptions): Expression {
+    const { source, expect, elementTable, typeParams: typeParamsDecl, variables, parameters } = options;
+
+    switch (source.kind) {
+        case model.ExpressionKind.Default: {
+            const factory = typeToRuntimeFactory(expect, typeParamsDecl);
+            return ({ typeParams }) => factory(typeParams).default();
+        }
+
+        case model.ExpressionKind.VariableGet: {
+            const { variableOrdinal: ordinal } = source;
+
+            if (ordinal < 0 || ordinal >= variables.length) {
+                const s1 = `Variable ordinal ${ordinal} is out of bounds: [0; ${variables.length})`;
+                const s2 = `Variable table at this location: [${variables.map(dbgVariableInfo).join(", ")}]`;
+                throw new Error(`${s1}; ${s2}`);
+            }
+
+            const varInfo = variables[ordinal];
+
+            if (!compareType(expect, varInfo.dataType)) {
+                const s1 = dbg`Expect type ${expect}, found ${varInfo.dataType} (${ordinal})`;
+                const s2 = `Variable table at this location: [${variables.map(dbgVariableInfo).join(", ")}]`;
+                throw new Error(`${s1}; ${s2}`);
+            }
+
+            if (!varInfo.initialized) {
+                const s1 = dbg`Variable ${ordinal} is not initialized yet`;
+                const s2 = `Variable table at this location: [${variables.map(dbgVariableInfo).join(", ")}]`;
+                throw new Error(`${s1}; ${s2}`);
+            }
+
+            return (options) => options.getVar(ordinal);
+        }
+
+        case model.ExpressionKind.PatternMatch: {
+            const targetType = loadType({ source: source.targetType, elementTable, typeParams: typeParamsDecl });
+
+            if (!(targetType instanceof runtime.ConcreteType) || !(targetType.declaration instanceof runtime.Variant)) {
+                throw new Error(dbg`Target type must be a variant, found ${targetType}`);
+            }
+
+            const variant = targetType.declaration;
+            const factory = typeToRuntimeFactory(targetType, typeParamsDecl);
+            const targetExpr = loadExpression({ ...options, source: source.target, expect: targetType });
+            const fallbackExpr = loadExpression({ ...options, source: source.fallback });
+            const cases = new Map(
+                Object.entries(source.cases).map(([name, source]) => {
+                    if (!(name in variant.options)) {
+                        throw new Error(dbg`No option ${name} in ${variant}`);
+                    }
+
+                    const optionInfo = variant.options[name];
+                    const expr = loadExpression({
+                        ...options,
+                        source,
+                        variables: optionInfo.dataType == null ? variables : [
+                            {
+                                dataType: optionInfo.dataType,
+                                origin: VariableOrigin.PatternMatch,
+                                initialized: true,
+                                writable: false,
+                            },
+                            ...variables,
+                        ],
+                    });
+
+                    return [name, { hasData: optionInfo.dataType != null, expr }];
+                }),
+            );
+
+            return (options) => {
+                const target = targetExpr(options);
+                const vTypeParams = factory(options.typeParams).typeParams;
+                const result = variant.match(vTypeParams, target);
+                const matched = cases.get(result.option);
+                return matched == null ? fallbackExpr(options) : matched.expr({
+                    ...options,
+                    getVar: !matched.hasData ? options.getVar : (o) => o == 0 ? result.data : options.getVar(o - 1),
+                    setVar: !matched.hasData ? options.setVar : (o, v) => o == 0 ? void 0 : options.setVar(o - 1, v),
+                });
             };
         }
 
-        case "number":
-        case "boolean":
-        case "string": {
-            const decl = primitiveTypeDecls[source.kind];
+        case model.ExpressionKind.FunctionInvoke: {
+            const { functionOrdinal: ordinal } = source;
 
-            if (expected.kind != "fresh" || expected.decl != decl) {
-                throw new Error("(TODO: expected type is X, but Y constant found)");
+            if (ordinal < 0 || ordinal >= elementTable.length) {
+                throw new Error(`Element index ${ordinal} is out of bounds: [0; ${elementTable.length})`);
+            }
+
+            const fn = elementTable[ordinal];
+
+            if (!(fn instanceof runtime.Function)) {
+                throw new Error(`Expecting element #${ordinal} to be a function, found ${fn.elementTypeName}`);
+            }
+
+            if (fn.typeParams.length != source.typeParams.length) {
+                const x = fn.typeParams.length;
+                const y = source.typeParams.length;
+                throw new Error(`Function requires ${x} type parameters, but only ${y} found`);
+            }
+
+            if (fn.inputs.length != source.inputs.length) {
+                throw new Error(`Function requires ${fn.inputs.length} inputs, but only ${source.inputs.length} found`);
+            }
+
+            const targetTypes = source.typeParams.map((source) => {
+                const type = loadType({ source, elementTable, typeParams: typeParamsDecl });
+                const factory = typeToRuntimeFactory(type, typeParamsDecl);
+                return { type, factory };
+            });
+
+            const outputType = translateDomain(
+                fn.typeParams,
+                fn.outputType,
+                targetTypes.map(({ type }) => type),
+                (decl, typeParams) => new runtime.ConcreteType(decl, typeParams),
+            );
+
+            if (!compareType(expect, outputType)) {
+                throw new Error(dbg`Expect ${expect}, found ${outputType}`);
+            }
+
+            const inputs = source.inputs.map((source, i) => (loadExpression({
+                ...options,
+                source,
+                expect: translateDomain(
+                    fn.typeParams,
+                    fn.inputs[i].inputType,
+                    targetTypes.map(({ type }) => type),
+                    (decl, typeParams) => new runtime.ConcreteType(decl, typeParams),
+                ),
+            })));
+
+            return (options) => {
+                const evaluatedInputs = inputs.map((expr) => expr(options));
+                const fnTypeParams = targetTypes.map(({ factory }) => factory(options.typeParams));
+                fn.invoke(fnTypeParams, ...evaluatedInputs);
+            };
+        }
+
+        case model.ExpressionKind.ParameterInvoke: {
+            const { parameter } = source;
+
+            if (!(parameter in parameters)) {
+                throw new Error(dbg`No parameter ${parameter} in current scope`);
+            }
+
+            const paramInfo = parameters[parameter];
+
+            if (source.inputs.length != paramInfo.inputs.length) {
+                const x = paramInfo.inputs.length;
+                const y = source.inputs.length;
+                throw new Error(`Parameter requires ${x} inputs, but only ${y} found`);
+            }
+
+            if (!compareType(expect, paramInfo.output)) {
+                throw new Error(dbg`Expect ${expect}, found ${paramInfo.output}`);
+            }
+
+            const inputs = source.inputs.map((source, i) => (loadExpression({
+                ...options,
+                source,
+                expect: paramInfo.inputs[i],
+            })));
+
+            return (options) => options.invokeParameter(parameter, inputs.map((fn) => fn(options)));
+        }
+
+        case model.ExpressionKind.Number:
+        case model.ExpressionKind.Boolean:
+        case model.ExpressionKind.String: {
+            const found = primitiveMap[source.kind];
+
+            if (!compareType(expect, found)) {
+                throw new Error(dbg`Expect type ${expect}, found ${found}`);
             }
 
             return () => source.value;
         }
 
-        case "array": {
-            const { values } = source;
-
-            if (expected.kind != "fresh" || expected.decl != runtime.coreModule.Array) {
-                throw new Error("(TODO: expected type is X, but array literal found)");
+        case model.ExpressionKind.Array: {
+            if (!(expect instanceof runtime.ConcreteType) || expect.declaration != array) {
+                throw new Error(dbg`Expect type ${expect}, found array`);
             }
 
-            const expectedEntry = expected.typeParams[0];
-            const entries = values.map((source) => loadExpression({ ...options, source, expected: expectedEntry }));
-            return (typeParams, variables) => entries.map((expr) => expr(typeParams, variables));
+            const elements = source.elements.map((source) => (loadExpression({
+                ...options,
+                source,
+                expect: expect.typeParams[0],
+            })));
+
+            return (options) => elements.map((fn) => fn(options));
         }
 
-        case "struct": {
-            const { fields } = source;
-
-            if (expected.kind != "fresh" || expected.decl.info.family != "struct") {
-                throw new Error("(TODO: expected type is X, but struct initializer found)");
+        case model.ExpressionKind.Struct: {
+            if (!(expect instanceof runtime.ConcreteType) || !(expect.declaration instanceof runtime.Struct)) {
+                throw new Error(dbg`Expect type ${expect}, found struct`);
             }
 
-            // avoid these checks for now to reduce breaking changes from modifying module
-            // editor should show warning instead
-            // for (const expectedField in expected.decl.info.fields) {
-            //     if (!(expectedField in fields)) {
-            //         throw new Error(`(TODO: struct initializer does not have field X, which is required by Y)`);
-            //     }
-            // }
-            // for (const foundField in fields) {
-            //     if (!(foundField in expected.decl.info.fields)) {
-            //         throw new Error("(TODO: struct initializer have extra field X, while Y does not)");
-            //     }
-            // }
-
-            const structInfo = expected.decl.info;
-            const entries = Object
-                .entries(fields)
-                .filter(([name]) => name in structInfo.fields)
-                .map(([name, source]) => {
-                    const expectedFieldType = mapType(structInfo.fields[name].type, expected.typeParams);
-                    return [name, loadExpression({ ...options, source, expected: expectedFieldType })] as const;
-                });
-
-            return (typeParams, variables) => (structInfo.create(
-                typeParams,
-                Object.fromEntries(
-                    entries.map(([name, expr]) => [name, expr(typeParams, variables)] as const),
-                ),
-            ));
-        }
-
-        case "variant": {
-            const { option, data } = source;
-
-            if (expected.kind != "fresh" || expected.decl.info.family != "variant") {
-                throw new Error("(TODO: expected type is X, but variant initializer found)");
-            }
-
-            if (!(option in expected.decl.info.options)) {
-                throw new Error("(TODO: type X does not have option Y)");
-            }
-
-            const optionInfo = expected.decl.info.options[option];
-
-            if (optionInfo.type == null && data == null) {
-                return (typeParams) => optionInfo.create(typeParams, null);
-            } else if (optionInfo.type != null && data != null) {
-                const expr = loadExpression({
-                    ...options,
-                    source: data,
-                    expected: mapType(optionInfo.type, expected.typeParams),
-                });
-                return (typeParams, variables) => optionInfo.create(typeParams, expr(typeParams, variables));
-            } else if (optionInfo.type == null) {
-                throw new Error("(TODO: option X in type Y does not hold data, but variant init is providing it)");
-            } else {
-                throw new Error("(TODO: option X in type Y hold data, but variant init is not providing it)");
-            }
-        }
-
-        case "variable": {
-            const { variableOrdinal } = source;
-
-            if (variableOrdinal >= options.variables.length) {
-                // TODO: also show variable table
-                throw new Error("(TODO: variable ordinal out of bounds)");
-            }
-
-            if (!runtime.typeEquals(expected, variables[variableOrdinal].type)) {
-                throw new Error("(TODO: expected type is X, but Y found)");
-            }
-
-            if (!variables[variableOrdinal].init) {
-                throw new Error("(TODO: variable X is used before initialization)");
-            }
-
-            return (_, variables) => variables.get(variableOrdinal);
-        }
-
-        case "field": {
-            const { target, fieldName } = source;
-            const type = loadType({ source: source.type, elementTable });
-            const instanceExpr = loadExpression({ ...options, source: target, expected: type });
-
-            if (type.kind != "fresh" || type.decl.info.family != "struct") {
-                throw new Error("(TODO: trying to access field X on non-struct type Y)");
-            }
-
-            const structInfo = type.decl.info;
-
-            if (!(fieldName in structInfo.fields)) {
-                throw new Error("(TODO: no field X in type Y)");
-            }
-
-            const fieldInfo = structInfo.fields[fieldName];
-            const fieldType = mapType(fieldInfo.type, type.typeParams);
-
-            if (!runtime.typeEquals(expected, fieldType)) {
-                throw new Error("(TODO: expected type is X, but Y found)");
-            }
-
-            return (typeParams, variables) => {
-                const instance = instanceExpr(typeParams, variables);
-                return fieldInfo.get(qualifyType(type, typeParams).typeParams, instance);
-            };
-        }
-
-        case "function": {
-            const { functionOrdinal, typeParams, inputs } = source;
-            const element = elementTable(functionOrdinal);
-
-            if (!(element instanceof runtime.Function)) {
-                throw new Error("(TODO: X is not a function)");
-            }
-
-            const functionTypeParams = typeParams.map((source) => loadType({ source, elementTable }));
-            const returnType = mapType(element.info.returnType, functionTypeParams);
-
-            if (!runtime.typeEquals(expected, returnType)) {
-                throw new Error("(TODO: expected type is X, but Y found)");
-            }
-
-            const inputTypes = element.info.inputs.map(({ type }) => mapType(type, functionTypeParams));
-            const loadedInputs = inputs.map((source, i) =>
-                loadExpression({
-                    ...options,
-                    source,
-                    expected: inputTypes[i],
-                })
-            );
-
-            return (inputTypeParams, variables) => {
-                const inputs = loadedInputs.map((expr) => expr(inputTypeParams, variables));
-                const typeParams = functionTypeParams.map((type) => qualifyType(type, inputTypeParams));
-                return element.info.apply(typeParams, ...inputs);
-            };
-        }
-
-        case "method": {
-            const { target, methodName, typeParams, inputs } = source;
-            const type = loadType({ source: source.type, elementTable });
-            const instanceExpr = loadExpression({ ...options, source: target, expected: type });
-
-            if (type.kind != "fresh") {
-                throw new Error("(TODO: trying to access method X on parameterized type Y)");
-            }
-
-            if (!(methodName in type.decl.info.methods)) {
-                throw new Error("(TODO: no method X in type Y)");
-            }
-
-            const methodInfo = type.decl.info.methods[methodName];
-            const methodTypeParams = [
-                ...type.typeParams,
-                ...typeParams.map((source) => loadType({ source, elementTable })),
-            ];
-            const returnType = mapType(methodInfo.returnType, methodTypeParams);
-
-            if (!runtime.typeEquals(expected, returnType)) {
-                throw new Error("(TODO: expected type is X, but Y found)");
-            }
-
-            const inputTypes = methodInfo.inputs.map(({ type }) => mapType(type, methodTypeParams));
-            const loadedInputs = inputs.map((source, i) =>
-                loadExpression({
-                    ...options,
-                    source,
-                    expected: inputTypes[i],
-                })
-            );
-
-            return (inputTypeParams, variables) => {
-                const instance = instanceExpr(inputTypeParams, variables);
-                const inputs = loadedInputs.map((expr) => expr(inputTypeParams, variables));
-                const typeParams = methodTypeParams.map((type) => qualifyType(type, inputTypeParams));
-                return methodInfo.apply(typeParams, instance, ...inputs);
-            };
-        }
-
-        case "match": {
-            const { target, options: arms, fallback } = source;
-            const type = loadType({ source: source.type, elementTable });
-            const instanceExpr = loadExpression({ ...options, source: target, expected: type });
-
-            if (type.kind != "fresh" || type.decl.info.family != "variant") {
-                throw new Error("(TODO: trying to access option X on non-variant type Y)");
-            }
-
-            const variantInfo = type.decl.info;
-            const loadedFallback = loadExpression({ ...options, source: fallback });
-            const loadedOptions = Object.entries(arms).map(([name, expression]) => {
-                if (!(name in variantInfo.options)) {
-                    throw new Error("(TODO: no option X in variant Y)");
-                }
-
-                const variables: readonly VariableInfo[] = variantInfo.options[name].type == null
-                    ? options.variables
-                    : [
-                        {
-                            type: variantInfo.options[name].type,
-                            mode: "let",
-                            init: true,
-                        },
-                        ...options.variables,
-                    ];
-
-                return [name, loadExpression({ ...options, source: expression, variables })] as const;
+            const struct = expect.declaration;
+            const factory = typeToRuntimeFactory(expect, typeParamsDecl);
+            const fields = Object.entries(source.fields).map(([name, source]) => {
+                if (!(name in struct.fields)) throw new Error(dbg`No field ${name} in struct ${struct}`);
+                const expr = loadExpression({ ...options, source, expect: struct.fields[name].fieldType });
+                return [name, expr] as const;
             });
 
-            return (inputTypeParams, variables) => {
-                const instance = instanceExpr(inputTypeParams, variables);
-                const qualified = qualifyType(type, inputTypeParams);
-
-                for (const [name, option] of loadedOptions) {
-                    const result = variantInfo.options[name].match(qualified.typeParams, instance);
-
-                    if (result.matched) {
-                        if (variantInfo.options[name].type == null) return option(inputTypeParams, variables);
-                        return option(inputTypeParams, {
-                            get: (ordinal) => {
-                                if (ordinal == 0) return result.data;
-                                return variables.get(ordinal - 1);
-                            },
-                            set: (ordinal, value) => {
-                                if (ordinal == 0) throw new Error(`Variable can only be assigned once`);
-                                return variables.set(ordinal - 1, value);
-                            },
-                        });
-                    }
-                }
-
-                return loadedFallback(inputTypeParams, variables);
+            return (options) => {
+                const sTypeParams = factory(options.typeParams).typeParams;
+                struct.create(sTypeParams, Object.fromEntries(fields.map(([name, fn]) => [name, fn(options)])));
             };
         }
+
+        case model.ExpressionKind.Variant: {
+            const { option, data } = source;
+
+            if (!(expect instanceof runtime.ConcreteType) || !(expect.declaration instanceof runtime.Variant)) {
+                throw new Error(dbg`Expect type ${expect}, found variant`);
+            }
+
+            if (!(option in expect.declaration.options)) {
+                throw new Error(dbg`No option ${option} in variant ${expect}`);
+            }
+
+            const variant = expect.declaration;
+            const { dataType } = expect.declaration.options[option];
+            const factory = typeToRuntimeFactory(expect, typeParamsDecl);
+            const dataExpr = dataType == null || data == null ? null : loadExpression({
+                ...options,
+                source: data,
+                expect: dataType,
+            });
+
+            if (dataType == null && data != null) {
+                throw new Error(dbg`Option ${option} in ${variant} does not expect any data, but data is provided`);
+            }
+
+            return (options) => {
+                const vTypeParams = factory(options.typeParams).typeParams;
+                variant.create(vTypeParams, option, dataExpr == null ? undefined : dataExpr(options));
+            };
+        }
+
+        case model.ExpressionKind.Asset: {
+            if (!compareType(expect, asset)) {
+                throw new Error(dbg`Expect type ${expect}, found asset`);
+            }
+
+            const { assetOrdinal: ordinal } = source;
+
+            if (ordinal < 0 || ordinal >= elementTable.length) {
+                throw new Error(`Element index ${ordinal} is out of bounds: [0; ${elementTable.length})`);
+            }
+
+            const assetElement = elementTable[ordinal];
+
+            if (!(assetElement instanceof runtime.Asset)) {
+                throw new Error(`Expecting element #${ordinal} to be an asset, found ${assetElement.elementTypeName}`);
+            }
+
+            return () => assetElement.data;
+        }
     }
-
-    throw new Error("(TODO: unexpected expression type / try updating maybe?)");
-}
-
-const primitiveTypeDecls = {
-    number: runtime.coreModule.number,
-    boolean: runtime.coreModule.boolean,
-    string: runtime.coreModule.string,
-};
-
-/**
- * Where the type parameter is located
- */
-export enum TypeParameterKind {
-    Function = "function",
-    Type = "type",
-    Method = "method",
-    Component = "component",
-}
-
-export interface VariableInfo {
-    readonly mode: "let" | "var";
-    readonly type: runtime.Type;
-    readonly init: boolean;
-}
-
-interface RuntimeVariableTable {
-    get(ordinal: number): unknown;
-    set(ordinal: number, value: unknown): void;
 }

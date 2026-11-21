@@ -1,53 +1,36 @@
-import * as motion from "@nahara/motion";
+import * as helper from "@nahara/motion-helper";
 
-export class NativeTypeDecl extends motion.runtime.TypeDecl {
-    #cached: motion.runtime.TypeDeclInfo | null = null;
-    #query: () => motion.runtime.TypeDeclInfo;
-
-    constructor(query: () => motion.runtime.TypeDeclInfo) {
-        super();
-        this.#query = query;
-    }
-
-    override get info(): motion.runtime.TypeDeclInfo {
-        if (this.#cached == null) this.#cached = this.#query();
-        return this.#cached;
-    }
-}
-
-export class NativeFunction extends motion.runtime.Function {
-    #cached: motion.runtime.FunctionInfo | null = null;
-    #query: () => motion.runtime.FunctionInfo;
-
-    constructor(query: () => motion.runtime.FunctionInfo) {
-        super();
-        this.#query = query;
-    }
-
-    override get info(): motion.runtime.FunctionInfo {
-        if (this.#cached == null) this.#cached = this.#query();
-        return this.#cached;
-    }
-}
-
-export class NativeComponent extends motion.runtime.Component {
-    #cached: motion.runtime.ComponentInfo | null = null;
-    #query: () => motion.runtime.ComponentInfo;
-
-    constructor(query: () => motion.runtime.ComponentInfo) {
-        super();
-        this.#query = query;
-    }
-
-    override get info(): motion.runtime.ComponentInfo {
-        if (this.#cached == null) this.#cached = this.#query();
-        return this.#cached;
-    }
-}
-
-export type Variant<T extends Readonly<Record<string, unknown>>> = {
-    [Option in keyof T]: {
+export type Variant<Dict> = {
+    [Option in keyof Dict]: {
         readonly option: Option;
-        readonly data: T[Option];
+        readonly data: Dict[Option];
     };
-}[keyof T];
+}[keyof Dict];
+
+export interface VariantCreateOptions<Dict> extends helper.host.TypeOptions<Variant<Dict>> {
+    readonly options: {
+        [Option in keyof Dict]: helper.host.LabelingOptions & {
+            readonly dataType: Dict[Option] extends null ? null : helper.host.Type;
+        };
+    };
+}
+
+export function createVariant<Dict>(options: VariantCreateOptions<Dict>): helper.host.HostVariantType<Variant<Dict>> {
+    return new helper.host.HostVariantType({
+        ...options,
+        variants: Object.fromEntries(
+            // deno-lint-ignore no-explicit-any
+            Object.entries<any>(options.options).map(([name, { dataType, ...options }]) => [name, {
+                ...options,
+                dataType,
+                match: (self) =>
+                    self.option == name
+                        ? dataType != null
+                            ? helper.host.MatchResult.matchedWith(self.data)
+                            : helper.host.MatchResult.matched
+                        : helper.host.MatchResult.notMatched,
+                create: (_, data) => ({ option: name, data }),
+            }]),
+        ),
+    });
+}

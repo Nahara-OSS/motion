@@ -1,7 +1,7 @@
 {
     "publish": false,
     "imports": {
-        "@img/png": "jsr:@img/png@^0.1.6",
+        "@gfx/dwm": "jsr:@gfx/dwm@^0.3.9",
         "harfbuzzjs": "npm:harfbuzzjs@^1.6.4"
     }
 }

@@ -21,6 +21,7 @@ export interface Path {
     readonly length: number;
     readonly segments: readonly SegmentInfo[];
 }
+
 export interface SegmentInfo {
     readonly offset: number;
     readonly length: number;

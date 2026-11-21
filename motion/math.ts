@@ -3,6 +3,16 @@ export class Matrix4 {
 
     static readonly IDENTITY: Matrix4 = new Matrix4(new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]));
 
+    /**
+     * Create new matrix from array of numbers
+     *
+     * The matrix elements when laid out contiguously in array are in column-major order, similar to OpenGL and WebGPU,
+     * where the translation components are in 13th, 14th and 15th element of the array.
+     *
+     * @param array Array containing matrix values
+     * @param offset Offset in array
+     * @returns New matrix
+     */
     static fromArray(array: ArrayLike<number>, offset: number = 0): Matrix4 {
         if (offset + 16 > array.length) throw new Error("There must be at least 16 elements to create a matrix");
         if (offset == 0 && array.length == 16) return new Matrix4(new Float32Array(array));
@@ -89,6 +99,10 @@ export class Matrix4 {
         }
 
         return new Matrix4(result);
+    }
+
+    get(i: number): number {
+        return this.data[i];
     }
 
     map(x: number, y: number, z: number, w: number): [x: number, y: number, z: number, w: number] {
