@@ -1,43 +1,8 @@
 {
     "name": "@nahara/motion-editor",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "license": "GPL-3.0-or-later",
     "exports": "./mod.ts",
-    "publish": false,
-    "tasks": {
-        "fetch-assets": {
-            "description": "Download assets (fonts, icons, etc)",
-            "command": "deno --allow-net --allow-read --allow-write fetch-assets.ts"
-        },
-        "build-static": {
-            "description": "Build static files",
-            "dependencies": ["fetch-assets"],
-            "command": "deno --unstable-bundle -A build.ts"
-        },
-        "dev-browser": {
-            "description": "Open editor in development mode as HTTP server",
-            "dependencies": ["build-static"],
-            "command": "deno --allow-net --allow-read --allow-write desktop.ts"
-        },
-        "dev-desktop": {
-            "description": "Open editor in development mode as desktop window",
-            "dependencies": ["build-static"],
-            "command": "deno desktop -A --hmr --backend cef ./desktop.ts"
-        }
-    },
-    "compilerOptions": {
-        "jsx": "react-jsx",
-        "jsxImportSource": "preact"
-    },
-    "desktop": {
-        "app": {
-            "name": "Nahara's Motion",
-            "identifier": "vn.io.nahara.motion"
-        }
-    },
-    "compile": {
-        "include": ["./build/static"]
-    },
     "imports": {
         "@mary/zip": "jsr:@mary/zip@^0.2.2",
         "preact": "npm:preact@^11.1.1"
