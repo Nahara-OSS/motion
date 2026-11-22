@@ -47,7 +47,9 @@ export function loadModule(options: LoadModuleOptions): LoadedModule {
             }
 
             default: {
-                return loadNonImportElement(e);
+                const element = loadNonImportElement(e);
+                linkable.push(element);
+                return element;
             }
         }
     });
@@ -76,7 +78,9 @@ export async function loadModuleAsync(options: LoadModuleOptionsAsync): Promise<
             }
 
             default: {
-                return loadNonImportElement(e);
+                const element = loadNonImportElement(e);
+                linkable.push(element);
+                return element;
             }
         }
     }));
