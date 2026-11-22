@@ -176,6 +176,7 @@
       "editor": {
         "dependencies": [
           "jsr:@mary/zip@~0.2.2",
+          "jsr:@std/assert@^1.0.19",
           "npm:preact@^11.1.1"
         ]
       },

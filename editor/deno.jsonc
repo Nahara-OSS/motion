@@ -3,8 +3,14 @@
     "version": "1.0.0",
     "license": "GPL-3.0-or-later",
     "exports": "./mod.ts",
+    "publish": {
+        "exclude": [
+            "./test.ts"
+        ]
+    },
     "imports": {
         "@mary/zip": "jsr:@mary/zip@^0.2.2",
+        "@std/assert": "jsr:@std/assert@^1.0.19",
         "preact": "npm:preact@^11.1.1"
     }
 }
