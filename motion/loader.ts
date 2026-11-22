@@ -6,26 +6,14 @@ import * as model from "./model.ts";
 import * as runtime from "./runtime.ts";
 
 export interface LoadModuleOptions {
-    /**
-     * Module source parsed as AST
-     */
     readonly source: model.Module;
+    readonly resolve: (module: string, name: string) => runtime.Element;
+    readonly asset: (name: string) => Blob;
+}
 
-    /**
-     * Resolve for element from given module identifier and export name
-     *
-     * @param module Module identifier
-     * @param name Exported element name
-     * @returns Resolved element
-     */
+export interface LoadModuleOptionsAsync {
+    readonly source: model.Module;
     readonly resolve: (module: string, name: string) => PromiseLike<runtime.Element> | runtime.Element;
-
-    /**
-     * Resolve for asset inside current module from given name (or path)
-     *
-     * @param name Asset name
-     * @returns Resolved asset
-     */
     readonly asset: (name: string) => PromiseLike<Blob> | Blob;
 }
 
@@ -34,10 +22,47 @@ export interface LoadedModule {
     readonly exports: Readonly<Record<string, runtime.Element>>;
 }
 
-export async function loadModule(options: LoadModuleOptions): Promise<LoadedModule> {
+/**
+ * Load module from source
+ *
+ * The sync version is for when the dependencies are known and already loaded ahead of time, while the async version
+ * should be used whenever possible.
+ *
+ * @param options Module load options
+ * @returns Loaded module
+ */
+export function loadModule(options: LoadModuleOptions): LoadedModule {
     const { source, resolve, asset } = options;
     const linkable: Linkable[] = [];
+    const elementTable = source.elementTable.map((e) => {
+        switch (e.kind) {
+            case model.ElementKind.ImportElement: {
+                const { module, name } = e;
+                return resolve(module, name);
+            }
 
+            case model.ElementKind.ImportAsset: {
+                const { name } = e;
+                return new Asset(asset(name));
+            }
+
+            default: {
+                return loadNonImportElement(e);
+            }
+        }
+    });
+    return linkModule(elementTable, source.exports, linkable);
+}
+
+/**
+ * Async version of {@link loadModule}
+ *
+ * @param options Module load options
+ * @returns Loaded module
+ */
+export async function loadModuleAsync(options: LoadModuleOptionsAsync): Promise<LoadedModule> {
+    const { source, resolve, asset } = options;
+    const linkable: Linkable[] = [];
     const elementTable = await Promise.all(source.elementTable.map(async (e) => {
         switch (e.kind) {
             case model.ElementKind.ImportElement: {
@@ -50,26 +75,44 @@ export async function loadModule(options: LoadModuleOptions): Promise<LoadedModu
                 return new Asset(await asset(name));
             }
 
-            case model.ElementKind.Component: {
-                const component = new Component(e);
-                linkable.push(component);
-                return component;
-            }
-
             default: {
-                throw new Error(`Illegal element type ID: ${(e as model.Element)?.kind ?? "<???>"}`);
+                return loadNonImportElement(e);
             }
         }
     }));
+    return linkModule(elementTable, source.exports, linkable);
+}
 
-    linkable.forEach((e) => {
-        e[Linkable](elementTable);
-    });
+function loadNonImportElement(source: model.Element): runtime.Element & Linkable {
+    switch (source.kind) {
+        case model.ElementKind.ImportElement:
+        case model.ElementKind.ImportAsset: {
+            throw new Error("Linking should be done in module loader");
+        }
+
+        case model.ElementKind.Component: {
+            const component = new Component(source);
+            return component;
+        }
+
+        default: {
+            throw new Error(`Illegal element type ID: ${(source as model.Element)?.kind ?? "<???>"}`);
+        }
+    }
+}
+
+function linkModule(
+    elementTable: runtime.Element[],
+    exports: Readonly<Record<string, number>>,
+    linkables: Linkable[],
+): LoadedModule {
+    for (const linkable of linkables) linkable[LinkQueryableInfo](elementTable);
+    for (const linkable of linkables) linkable[LinkImplementation](elementTable);
 
     return {
         elementTable,
         exports: Object.fromEntries(
-            Object.entries(source.exports).map(([key, ordinal]) => {
+            Object.entries(exports).map(([key, ordinal]) => {
                 if (ordinal < 0 || ordinal >= elementTable.length) {
                     throw new Error(`Element index ${ordinal} is out of bounds: [0; ${elementTable.length})`);
                 }
@@ -81,10 +124,12 @@ export async function loadModule(options: LoadModuleOptions): Promise<LoadedModu
 }
 
 interface Linkable {
-    [Linkable](elementTable: readonly runtime.Element[]): void;
+    [LinkQueryableInfo](elementTable: readonly runtime.Element[]): void;
+    [LinkImplementation](elementTable: readonly runtime.Element[]): void;
 }
 
-const Linkable = Symbol("Linkable");
+const LinkQueryableInfo = Symbol();
+const LinkImplementation = Symbol();
 
 class Asset extends runtime.Asset {
     override annotations: readonly annotation.Annotation[] = [];
@@ -96,7 +141,8 @@ class Asset extends runtime.Asset {
 
 class Component extends runtime.Component implements Linkable {
     #source: model.Component;
-    #parameters: Record<string, runtime.Parameter & { fallback: Expression }> | null = null;
+    #parameters: Record<string, runtime.Parameter> | null = null;
+    #fallbacks: Record<string, Expression> | null = null;
     #content: readonly ((options: RenderOptions) => Promise<void>)[] | null = null;
     #slots: Record<string, runtime.Slot> | null = null;
 
@@ -120,9 +166,9 @@ class Component extends runtime.Component implements Linkable {
         return this.#slots;
     }
 
-    [Linkable](elementTable: readonly runtime.Element[]): void {
+    [LinkQueryableInfo](elementTable: readonly runtime.Element[]): void {
         this.#parameters = Object.fromEntries(
-            Object.entries(this.#source.parameters).map(([name, { annotations, inputs, output, fallback }]) => {
+            Object.entries(this.#source.parameters).map(([name, { annotations, inputs, output }]) => {
                 const paramInputs = inputs.map((source) => (loadInput({
                     source,
                     elementTable,
@@ -139,19 +185,6 @@ class Component extends runtime.Component implements Linkable {
                     annotations,
                     inputs: paramInputs,
                     outputType,
-                    fallback: loadExpression({
-                        source: fallback,
-                        expect: outputType,
-                        elementTable: elementTable,
-                        typeParams: this.typeParams,
-                        variables: paramInputs.map(({ inputType }) => ({
-                            dataType: inputType,
-                            origin: VariableOrigin.ParameterInput,
-                            writable: true,
-                            initialized: true,
-                        })),
-                        parameters: {},
-                    }),
                 }];
             }),
         );
@@ -165,6 +198,28 @@ class Component extends runtime.Component implements Linkable {
                     typeParams: this.typeParams,
                 }))),
             }]),
+        );
+    }
+
+    [LinkImplementation](elementTable: readonly runtime.Element[]): void {
+        this.#fallbacks = Object.fromEntries(
+            Object.entries(this.#source.parameters).map(([name, { fallback }]) => {
+                const { outputType, inputs } = this.#parameters![name];
+                const expr = loadExpression({
+                    source: fallback,
+                    expect: outputType,
+                    elementTable: elementTable,
+                    typeParams: this.typeParams,
+                    variables: inputs.map(({ inputType }) => ({
+                        dataType: inputType,
+                        origin: VariableOrigin.ParameterInput,
+                        writable: true,
+                        initialized: true,
+                    })),
+                    parameters: {},
+                });
+                return [name, expr];
+            }),
         );
 
         this.#content = this.#source.content.map((source) => (Component.loadChild({
@@ -198,6 +253,7 @@ class Component extends runtime.Component implements Linkable {
     ): Promise<void> {
         if (this.#parameters == null) throw new Error("Not linked");
         if (this.#slots == null) throw new Error("Not linked");
+        if (this.#fallbacks == null) throw new Error("Not linked");
         if (this.#content == null) throw new Error("Not linked");
 
         for (const child of this.#content) {
@@ -207,7 +263,7 @@ class Component extends runtime.Component implements Linkable {
                 invokeParameter: (parameter, inputs) => {
                     const fn = parameters[parameter];
                     if (fn != null) return fn(...inputs);
-                    return this.#parameters![parameter].fallback({
+                    return this.#fallbacks![parameter]({
                         typeParams,
                         invokeParameter: () => null,
                         getVar: (o) => inputs[o],

@@ -5,7 +5,7 @@ Deno.test("Loader test", async () => {
     let slotCounter = 0;
     let testCounter = 0;
 
-    const { exports: { Scene } } = await motion.loader.loadModule({
+    const { exports: { Scene } } = motion.loader.loadModule({
         source: {
             elementTable: [
                 {
@@ -51,8 +51,7 @@ Deno.test("Loader test", async () => {
                 Scene: 1,
             },
         },
-        // deno-lint-ignore require-await
-        resolve: async (module, name) => {
+        resolve: (module, name) => {
             if (module != "builtin:test" && name != "Test") throw new Error(`Only support builtin:test/Test`);
             return new (class extends motion.runtime.Component {
                 override annotations: readonly motion.annotation.Annotation[] = [];
