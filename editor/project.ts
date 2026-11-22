@@ -1,4 +1,5 @@
-import type * as motion from "@nahara/motion";
+import * as motion from "@nahara/motion";
+import * as stdlib from "@nahara/motion-stdlib";
 import type * as pkg from "@nahara/motion-package";
 import { resolvePath } from "./internal.ts";
 
@@ -34,6 +35,18 @@ export interface ProjectFolderItem {
 }
 
 export const ProjectState: {
+    /**
+     * Compile the project
+     *
+     * @param state Project state
+     * @param dependencies Loaded dependencies (must match dependencies declared in metadata)
+     * @returns Compiled project
+     */
+    readonly compile: (
+        state: ProjectState,
+        dependencies: Readonly<Record<string, pkg.ResolvedModule>>,
+    ) => motion.loader.LoadedModule;
+
     /**
      * Get item in project bin
      */
@@ -103,6 +116,58 @@ export const ProjectState: {
         updater: (module: motion.model.Module) => motion.model.Module,
     ) => ProjectState;
 } = {
+    compile: (state, dependencies) => {
+        const compiled = new Map<string, motion.loader.LoadedModule>();
+        const compiling = new Set<string>();
+
+        function compile(path: readonly string[]): motion.loader.LoadedModule {
+            const compileCacheKey = path.join("/");
+            let module = compiled.get(compileCacheKey);
+            if (module != null) return module;
+            if (compiling.has(compileCacheKey)) throw new Error(`${path.join("/")} triggered circular dependency`);
+
+            const item = ProjectState.getItem(state, path, true);
+            if (item.type != ItemType.Module) throw new Error(`${path.join("/")} is not a module`);
+
+            compiling.add(compileCacheKey);
+            module = motion.loader.loadModule({
+                source: item.source,
+
+                resolve: (module, name) => {
+                    let dependency: pkg.ResolvedModule;
+
+                    if (module in dependencies) {
+                        dependency = dependencies[module];
+                    } else if (module.startsWith("builtin:")) {
+                        const builtin = module.substring("builtin:".length);
+                        if (builtin in stdlib) dependency = (stdlib as Record<string, pkg.ResolvedModule>)[builtin];
+                        else throw new Error(`No built-in module ${module}`);
+                    } else if (module.startsWith("/") || module.startsWith("./") || module.startsWith("../")) {
+                        const modulePath = resolvePath(...path, "..", module);
+                        dependency = compile(modulePath).exports;
+                    } else {
+                        throw new Error(`Unable to find module ${module}`);
+                    }
+
+                    if (name in dependency) return dependency[name];
+                    throw new Error(`No exported element with name ${name} in module ${module}`);
+                },
+
+                asset: (name) => {
+                    const assetPath = resolvePath(...path, "..", name);
+                    const assetItem = ProjectState.getItem(state, assetPath, true);
+                    if (assetItem.type != ItemType.Asset) throw new Error(`${path.join("/")} is not an asset`);
+                    return assetItem.source;
+                },
+            });
+
+            compiled.set(compileCacheKey, module);
+            return module;
+        }
+
+        return compile(resolvePath(state.metadata.entry));
+    },
+
     getItem: <(typeof ProjectState)["getItem"]> function (s: ProjectState, path: readonly string[], require = true) {
         return ProjectFolderItem.get(ProjectItem.folder(s.root), path, require);
     },

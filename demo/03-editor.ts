@@ -6,10 +6,16 @@ let state = await editor.EditState.create(
     {
         metadata: {
             entry: "./main.bin",
+            dependencies: {},
         },
         root: {
             "main.bin": editor.ProjectItem.module({
                 elementTable: [
+                    {
+                        kind: motion.model.ElementKind.ImportElement,
+                        module: "builtin:core",
+                        name: "number",
+                    },
                     {
                         kind: motion.model.ElementKind.Component,
                         annotations: [],

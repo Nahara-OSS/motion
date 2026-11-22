@@ -10,6 +10,7 @@ import { resolvePath } from "./internal.ts";
  */
 export interface EditState {
     readonly project: ProjectState;
+    readonly loadedDeps: Readonly<Record<string, pkg.ResolvedModule>>;
     readonly compiled: motion.loader.LoadedModule;
 }
 
@@ -17,25 +18,19 @@ export const EditState: {
     readonly create: (project: ProjectState, resolver: pkg.Resolver) => Promise<EditState>;
 } = {
     create: async (project, resolver) => {
-        const compiled = await compile(project, resolver);
+        const loadedDeps = Object.fromEntries(
+            await Promise.all(
+                Object
+                    .entries(project.metadata.dependencies)
+                    .map(async ([name, packageId]) => [name, await resolver.resolvePackage(packageId)] as const),
+            ),
+        );
+        const compiled = ProjectState.compile(project, loadedDeps);
 
         return {
             project,
+            loadedDeps,
             compiled,
         };
     },
 };
-
-function compile(project: ProjectState, resolver: pkg.Resolver): Promise<motion.loader.LoadedModule> {
-    const entry = ProjectState.getEntry(project);
-    return motion.loader.loadModule({
-        source: entry,
-        resolve: async (module, name) => await resolver.resolveElement(module, name),
-        asset: (name) => {
-            const assetPath = resolvePath(project.metadata.entry, "..", name);
-            const item = ProjectState.getItem(project, assetPath, true);
-            if (item.type != ItemType.Asset) throw new Error(`Not an asset: ${assetPath.join("/")}`);
-            return item.source;
-        },
-    });
-}
